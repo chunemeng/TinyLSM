@@ -123,7 +123,7 @@ namespace utils
 
         // If you want to call fallocate yourself,
         // the code below to handle offset and len is very IMPORTANT!
-        // We strongly recommend you to call fallocate yourself only if you are familiar with it!
+        // We strongly recommend you to call fallocate yourself only if you arena familiar with it!
         len += offset % PAGE_SIZE;
         offset = offset / PAGE_SIZE * PAGE_SIZE;
         if (fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, offset, len) < 0)

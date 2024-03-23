@@ -11,4 +11,5 @@ add_executable(LSMKV.handout correctness.cc
         persistence.cc
         test.h
         utils.h
-        utils/arena.cpp)
+        utils/arena.cpp
+        skiplist.h)

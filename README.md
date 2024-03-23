@@ -26,9 +26,9 @@ Explanation of each handout file:
 
 First have a look at the `kvstore_api.h` file to check functions you need to implement. Then modify the `kvstore.cc` and `kvstore.h` files and feel free to add new class files.
 
-We will use all files with `.cc`, `.cpp`, `.cxx` suffixes to build correctness and persistence tests. Thus, you can use any IDE to finish this project as long as you ensure that all C++ source files are submitted.
+We will use all files with `.cc`, `.cpp`, `.cxx` suffixes to build correctness and persistence tests. Thus, you can use any IDE to finish this project as long as you ensure that all C++ source files arena submitted.
 
-For the test files, of course you could modify it to debug your programs. But remember to change it back when you are testing.
+For the test files, of course you could modify it to debug your programs. But remember to change it back when you arena testing.
 
 Good luck :)
 
