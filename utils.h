@@ -109,7 +109,7 @@ namespace utils
      * @param offset offset from the beginning of the file you want to start reclaiming at.
      * @param len number of bytes you want to reclaim.
      * @return -1 if fail to open the file, -2 if fallocate fail, and 0 if reclaim space successfully
-     * @attention logic size of a file will NOT change after being reclaimed successfully,
+     * @attention logic _size of a file will NOT change after being reclaimed successfully,
      * so always make sure to calculate offset seems like the file has not been reclaimed.
      */
     static inline int de_alloc_file(const std::string &path, off_t offset, off_t len)
@@ -138,7 +138,7 @@ namespace utils
     }
 
     /**
-     * find the offset of the first block (size of a blcok is 4kB) that has data from the beginning of a file
+     * find the offset of the first block (_size of a blcok is 4kB) that has _data from the beginning of a file
      * @param path file to be searched for.
      * @return -1 if fail to open, offset if find successfully.
      */
@@ -185,7 +185,7 @@ namespace utils
 
     /**
      * generate crc16
-     * @param data binary data used to generate crc16.
+     * @param data binary _data used to generate crc16.
      * @return generated crc16.
      */
     static inline uint16_t crc16(const std::vector<unsigned char> &data)

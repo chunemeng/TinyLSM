@@ -52,8 +52,11 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 
 /**
  * This reclaims space from vLog by moving valid value and discarding invalid value.
- * chunk_size is the size in byte you should AT LEAST recycle.
+ * chunk_size is the _size in byte you should AT LEAST recycle.
  */
 void KVStore::gc(uint64_t chunk_size)
 {
+}
+int KVStore::writeLevel0Table(MemTable* mem) {
+	return 0;
 }

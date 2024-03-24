@@ -1,11 +1,16 @@
 #pragma once
 
 #include "kvstore_api.h"
+#include "memtable.h"
 
 class KVStore : public KVStoreAPI
 {
 	// You can add your implementation here
 private:
+	MemTable* mem;
+	MemTable* imm;
+
+	size_t timestamp;
 public:
 	KVStore(const std::string &dir);
 
@@ -22,4 +27,6 @@ public:
 	void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) override;
 
 	void gc(uint64_t chunk_size) override;
+
+	int writeLevel0Table(MemTable* mem);
 };

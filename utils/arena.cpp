@@ -3,7 +3,7 @@
 //
 
 #include "arena.h"
-char* arena::allocateFallBack(size_t bytes) {
+char* Arena::allocateFallBack(size_t bytes) {
 	if (bytes > BLOCK_SIZE >> 2) {
 		char* result = allocateNewBlock(bytes);
 		return result;
@@ -18,14 +18,14 @@ char* arena::allocateFallBack(size_t bytes) {
 	return result;
 }
 
-char* arena::allocateNewBlock(size_t bytes) {
+char* Arena::allocateNewBlock(size_t bytes) {
 	char* result = (char*)malloc(bytes);
 	pool.push_back(result);
 	return result;
 }
 
 
-char* arena::allocateAligned(size_t bytes) {
+char* Arena::allocateAligned(size_t bytes) {
 	const int align = (sizeof(void*) > 8) ? sizeof(void*) : 8;
 
 	// alloc_ptr % align

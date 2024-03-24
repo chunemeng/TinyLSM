@@ -49,7 +49,7 @@ public:
 
 	/**
 	 * This reclaims space from vLog by moving valid value and discarding invalid value.
-	 * chunk_size is the size in byte you should AT LEAST recycle.
+	 * chunk_size is the _size in byte you should AT LEAST recycle.
 	 */
 	virtual void gc(uint64_t chunk_size) = 0;
 };

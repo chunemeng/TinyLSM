@@ -48,7 +48,7 @@ public:
 			}
 		}
 
-		// Prepare data for Test Mode
+		// Prepare _data for Test Mode
 		for (i = 0; i < TEST_MAX; ++i)
 		{
 			switch (i & 3)
@@ -117,7 +117,7 @@ public:
 		std::cout << "KVStore Persistence Test" << std::endl;
 		std::cout << "<<Test Mode>>" << std::endl;
 		uint64_t i;
-		// Test data
+		// Test _data
 		for (i = 0; i < TEST_MAX; ++i)
 		{
 			if (i % GC_TRIGGER == 0) [[unlikely]]
@@ -177,9 +177,9 @@ int main(int argc, char *argv[])
 
 	if (pid == 0)
 	{
-		PersistenceTest test("./data", "./data/vlog", verbose);
+		PersistenceTest test("./_data", "./_data/vlog", verbose);
 
-		// The child process first prepared data for testing
+		// The child process first prepared _data for testing
 		test.prepare();
 
 		// Wake up parent process to randomly terminate child process
@@ -201,9 +201,9 @@ int main(int argc, char *argv[])
 		printf("Killing loop after %d ms.\n", wait_time);
 		std::cout << std::endl;
 
-		PersistenceTest test("./data", "./data/vlog", verbose);
+		PersistenceTest test("./_data", "./_data/vlog", verbose);
 
-		// test for data integrity
+		// test for _data integrity
 		test.test();
 	}
 	else

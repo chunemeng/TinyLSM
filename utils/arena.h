@@ -5,7 +5,7 @@
 
 
 const static int BLOCK_SIZE = 4096;
-class arena {
+class Arena {
 private:
 	char* alloc_ptr;
 	size_t alloc_bytes_remaining;
@@ -14,9 +14,9 @@ private:
 	char* allocateFallBack(size_t bytes);
 	char* allocateNewBlock(size_t bytes);
 public:
-	arena() : alloc_ptr(nullptr), alloc_bytes_remaining(0) {
+	Arena() : alloc_ptr(nullptr), alloc_bytes_remaining(0) {
 	};
-	~arena() {
+	~Arena() {
 		for (auto& i : pool) {
 			delete[] i;
 		}
@@ -25,7 +25,7 @@ public:
 	char* allocateAligned(size_t bytes);
 
 };
-inline char* arena::allocate(size_t bytes) {
+inline char* Arena::allocate(size_t bytes) {
 	if (bytes >= alloc_bytes_remaining) {
 		char* result = alloc_ptr;
 		alloc_ptr += bytes;
