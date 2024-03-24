@@ -2,7 +2,7 @@
 #define SKIPLIST_H
 
 #include <string>
-#include "utils/arena.h"
+#include "../utils/arena.h"
 #include <cstdint>
 #include <ctime>
 #include <random>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kvstore_api.h"
-#include "memtable.h"
+#include "src/memtable.h"
 
 class KVStore : public KVStoreAPI
 {

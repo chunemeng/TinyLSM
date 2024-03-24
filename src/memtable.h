@@ -2,9 +2,9 @@
 #define MEMTABLE_H
 #include <string>
 #include <list>
-#include "utils/arena.h"
+#include "../utils/arena.h"
 #include "skiplist.h"
-#include "utils/iterator.h"
+#include "../utils/iterator.h"
 
 using key_type = uint64_t;
 using value_type = std::string;
