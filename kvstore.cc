@@ -1,7 +1,10 @@
 #include "kvstore.h"
+#include "src/builder.h"
 #include <string>
 
-KVStore::KVStore(const std::string& dir, const std::string& vlog) : KVStoreAPI(dir, vlog), mem(new MemTable()) {
+KVStore::KVStore(const std::string& dir, const std::string& vlog)
+	: KVStoreAPI(dir, vlog), dbname(dir), vlog_path(vlog),
+	  mem(new MemTable()) {
 }
 
 KVStore::~KVStore() {
@@ -53,6 +56,8 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
  */
 void KVStore::gc(uint64_t chunk_size) {
 }
-int KVStore::writeLevel0Table(MemTable* mem) {
+int KVStore::writeLevel0Table(MemTable* memtable) {
+	Iterator* iter = memtable->newIterator();
+	BuildTable(dbname, iter);
 	return 0;
 }

@@ -12,6 +12,8 @@ class KVStore : public KVStoreAPI
 private:
 	MemTable* mem;
 	MemTable* imm;
+	std::string dbname;
+	std::string vlog_path;
 
 public:
 	KVStore(const std::string &dir, const std::string& vlog);
@@ -30,5 +32,5 @@ public:
 
 	void gc(uint64_t chunk_size) override;
 
-	int writeLevel0Table(MemTable* mem);
+	int writeLevel0Table(MemTable* memTable);
 };

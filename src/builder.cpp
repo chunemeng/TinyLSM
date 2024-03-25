@@ -8,9 +8,10 @@
 #include "vlogbuilder.h"
 #include "../utils/bloomfilter.h"
 
-Status BuildTable(const std::string& dbname, Version* v, Iterator* iter, FileMeta* meta) {
+Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
 //	meta->file_size = 0;
 	iter->seekToFirst();
+	FileMeta meta;
 	// magic 0xff
 	char* magic = "\377";
 
@@ -29,7 +30,7 @@ Status BuildTable(const std::string& dbname, Version* v, Iterator* iter, FileMet
 			return s;
 		}
 
-		meta->smallest = iter->key().data();
+		meta.smallest = iter->key().data();
 		Slice key;
 		Slice val;
 		for (; iter->hasNext(); iter->next()) {
@@ -44,17 +45,17 @@ Status BuildTable(const std::string& dbname, Version* v, Iterator* iter, FileMet
 			head_offset += val.size() + 15;
 		}
 		if (!key.empty()) {
-			meta->largest = key.data();
+			meta.largest = key.data();
 		}
 
 		char* sst_meta = new char[8224];
 		EncodeFixed64(sst_meta, v->timestamp++);
 		EncodeFixed64(sst_meta + 8, key_buf.size() / 20);
-		strncpy(sst_meta + 16, meta->smallest, 8);
-		strncpy(sst_meta + 24, meta->largest, 8);
+		strncpy(sst_meta + 16, meta.smallest, 8);
+		strncpy(sst_meta + 24, meta.largest, 8);
 		bloomfilter::CreateFilter(&key_buf[0], key_buf.size() / 20, 20, sst_meta + 32);
 
-		// need threa
+		// need thread
 		vlog->Append(vLogBuilder->plain_char());
 		vlog->Close();
 

@@ -6,6 +6,6 @@
 #include "../utils/filemeta.h"
 class Iterator;
 
-Status BuildTable(const std::string& dbname, Iterator* iter,FileMeta *meta);
+Status BuildTable(const std::string& dbname, Iterator* iter);
 
 #endif //BUILDER_H
