@@ -113,14 +113,6 @@ namespace Skiplist {
 				_cur = _list->_head;
 			}
 
-			void toList(std::list<std::pair<K,V>>& list) {
-				while (hasNext()) {
-					list.push_back(std::make_pair(_cur->_key, _cur->_value));
-					next();
-				}
-			}
-
-
 		private:
 			// not include _end!!!!
 			node* _cur;
@@ -170,11 +162,11 @@ namespace Skiplist {
 			return (n != nullptr) && (_key == n->_key);
 		}
 
-		bool remove(const K& key) {
+		bool remove(const K& key, const V& tombstone) {
 			auto prev = findHelper(key, nullptr);
 			auto cur = prev->next(0);
 			if (cur && cur->_key == key) {
-				cur->_value = "~DELETED~";
+				cur->_value = tombstone;
 				return true;
 			}
 			return false;

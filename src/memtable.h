@@ -12,8 +12,9 @@ using value_type = std::string;
 
 class MemTable {
 public:
-	typedef Skiplist::Skiplist<key_type , value_type> Table;
+	typedef Skiplist::Skiplist<key_type , Slice> Table;
 	void put(key_type key, value_type&& val);
+	void put(key_type key, const value_type& val);
 	std::string get(key_type key) const;
 	bool del(key_type key);
 	explicit MemTable();
@@ -24,6 +25,7 @@ private:
 	uint32_t size;
 	Arena arena;
 	Table table;
+	const char* tombstone;
 };
 
 #endif //MEMTABLE_H

@@ -36,7 +36,7 @@ public:
 		_size -= n;
 	}
 
-	std::string toString() const { return std::string(_data, _size); }
+	std::string toString() const { return {_data, _size}; }
 
 	int compare(const Slice& b) const;
 

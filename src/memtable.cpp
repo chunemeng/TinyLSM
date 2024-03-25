@@ -34,7 +34,9 @@ public:
 		const uint64_t& K2,
 		std::list<std::pair<uint64_t, std::string>>& list) override {
 		_iter.seek(K1, K2);
-		_iter.toList(list);
+		for (; _iter.hasNext(); _iter.next()) {
+			list.emplace_back(_iter.key(), _iter.value().toString());
+		}
 	}
 	Slice key() const override {
 		return SliceHelper(_iter.key());
@@ -52,7 +54,9 @@ Iterator* MemTable::newIterator() {
 }
 
 void MemTable::put(key_type key, value_type&& val) {
-	size += table.insert(key, std::move(val));
+	char* buf = arena.allocate(val.size());
+	memcpy(buf, val.data(), val.size());
+	size += table.insert(key, Slice(buf, val.size()));
 }
 value_type MemTable::get(key_type key) const {
 	Table::Iterator iter(&table);
@@ -60,17 +64,24 @@ value_type MemTable::get(key_type key) const {
 	if (iter.hasNext()) {
 		const key_type find_key = iter.key();
 		if (find_key == key) {
-			return iter.value();
+			return iter.value().toString();
 		}
 	}
 	return {};
 }
 MemTable::MemTable() : table(&arena), size(0) {
+	tombstone = arena.allocate(10);
+	tombstone = "~DELETED~\0";
 }
 
 bool MemTable::del(key_type key) {
-	return table.remove(key);
+	return table.remove(key, Slice(tombstone,10));
 }
 bool MemTable::memoryUsage() const {
 	return size < 408;
+}
+void MemTable::put(key_type key, const value_type& val) {
+	char* buf = arena.allocate(val.size());
+	memcpy(buf, val.data(), val.size());
+	size += table.insert(key, Slice(buf, val.size()));
 }
