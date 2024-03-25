@@ -32,4 +32,5 @@ add_executable(LSMKV.handout correctness.cc
         src/status.cpp
         src/memtable.cpp
         src/version.h
+        src/vlogbuilder.h
 )

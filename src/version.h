@@ -2,13 +2,14 @@
 #define VERSION_H
 
 #include <string>
-class Version {
-public:
+#include <cstdint>
+struct Version {
 	Version(const std::string& file) {
 
 	}
-private:
-
+	uint64_t fileno = 0;
+	uint64_t head = 0;
+	uint64_t timestamp = 0;
 };
 
 #endif //VERSION_H

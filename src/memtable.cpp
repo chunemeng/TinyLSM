@@ -36,9 +36,12 @@ public:
 	void scan(const uint64_t& K1,
 		const uint64_t& K2,
 		std::list<std::pair<uint64_t, std::string>>& list) override {
-		_iter.seek(K1, K2);
+		char buf[16];
+		EncodeFixed64(buf, K1);
+		EncodeFixed64(buf + 8, K2);
+		_iter.seek(Slice(buf, 8), Slice(buf + 8, 8));
 		for (; _iter.hasNext(); _iter.next()) {
-			list.emplace_back(_iter.key(), _iter.value().toString());
+			list.emplace_back(DecodeFixed64(_iter.key().data()), _iter.value().toString());
 		}
 	}
 	Slice key() const override {
@@ -60,7 +63,7 @@ void MemTable::put(key_type key, value_type&& val) {
 	char* buf = arena.allocate(val.size() + 8);
 	EncodeFixed64(buf, key);
 	memcpy(buf + 8, val.data(), val.size());
-	size += table.insert(Slice(buf,8), Slice(buf + 8, val.size()));
+	size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 }
 value_type MemTable::get(key_type key) const {
 	char buf[8];
@@ -82,7 +85,7 @@ MemTable::MemTable() : table(&arena), size(0) {
 bool MemTable::del(key_type key) {
 	char buf[8];
 	EncodeFixed64(buf, key);
-	return table.remove(Slice(buf,8), Slice(tombstone,10));
+	return table.remove(Slice(buf, 8), Slice(tombstone, 10));
 }
 size_t MemTable::memoryUsage() const {
 	return size;
@@ -90,5 +93,5 @@ size_t MemTable::memoryUsage() const {
 void MemTable::put(key_type key, const value_type& val) {
 	char* buf = arena.allocate(val.size());
 	memcpy(buf, val.data(), val.size());
-	size += table.insert(Slice(buf,8), Slice(buf + 8, val.size()));
+	size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 }

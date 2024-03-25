@@ -9,5 +9,8 @@ std::string MakeFileName(const std::string& dbname, uint64_t number, const std::
 std::string SSTFileName(const std::string& dbname, uint64_t number) {
 	return MakeFileName(dbname, number, "sst");
 }
+std::string VLogFileName(const std::string& dbname) {
+	return dbname + "/" + ".vlog";
+}
 
 #endif //FILENAME_H

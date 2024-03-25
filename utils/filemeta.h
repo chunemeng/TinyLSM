@@ -3,10 +3,12 @@
 #define MISC_XML_UTILS_FILEMETA_H
 
 struct FileMeta {
-	uint64_t number;
+	// 8bytes timestamp 8 bytes kv_size
+	// 8bytes largest 	8 bytes smallest
+	uint64_t timestamp;
 	uint64_t size;
-	uint64_t smallest;
-	uint64_t largest;
+	const char* largest;
+	const char* smallest;
 };
 
 #endif //FILEMETA_H
