@@ -4,8 +4,7 @@
 #include <string>
 #include <list>
 
-class KVStoreAPI
-{
+class KVStoreAPI {
 public:
 	/**
 	 * You should put all sstables under `dir`.
@@ -13,14 +12,15 @@ public:
 	 * there. Please refer to the c++ filesystem library
 	 * (https://en.cppreference.com/w/cpp/filesystem).
 	 */
-	KVStoreAPI(const std::string &dir) {}
+	KVStoreAPI(const std::string& dir, const std::string& vlog) {
+	}
 	KVStoreAPI() = delete;
 
 	/**
 	 * Insert/Update the key-value pair.
 	 * No return values for simplicity.
 	 */
-	virtual void put(uint64_t key, const std::string &s) = 0;
+	virtual void put(uint64_t key, const std::string& s) = 0;
 
 	/**
 	 * Returns the (string) value of the given key.
@@ -45,7 +45,7 @@ public:
 	 * keys in the list should be in an ascending order.
 	 * An empty string indicates not found.
 	 */
-	virtual void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) = 0;
+	virtual void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) = 0;
 
 	/**
 	 * This reclaims space from vLog by moving valid value and discarding invalid value.

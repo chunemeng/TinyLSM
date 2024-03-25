@@ -12,14 +12,14 @@ using value_type = std::string;
 
 class MemTable {
 public:
-	typedef Skiplist::Skiplist<key_type , Slice> Table;
+	typedef Skiplist::Skiplist<Slice , Slice> Table;
 	void put(key_type key, value_type&& val);
 	void put(key_type key, const value_type& val);
 	std::string get(key_type key) const;
 	bool del(key_type key);
 	explicit MemTable();
 	Iterator* newIterator();
-	bool memoryUsage() const;
+	size_t memoryUsage() const;
 private:
 	friend class MemTableIterator;
 	uint32_t size;

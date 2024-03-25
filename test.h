@@ -105,7 +105,7 @@ protected:
 	bool verbose;
 
 public:
-	Test(const std::string &dir, const std::string &vlog, bool v = true) : store(dir), vlog(vlog), verbose(v)
+	Test(const std::string &dir, const std::string &vlog, bool v = true) : store(dir,vlog), vlog(vlog), verbose(v)
 	{
 		nr_tests = 0;
 		nr_passed_tests = 0;

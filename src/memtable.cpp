@@ -1,12 +1,13 @@
 #include <sstream>
 #include "memtable.h"
+#include "../utils/coding.h"
 
-template<class T>
-static Slice SliceHelper(const T& t) {
-	std::stringstream tmp;
-	tmp << t;
-	return { tmp.str().c_str(), sizeof(T) };
-}
+//template<class T>
+//static Slice SliceHelper(const T& t) {
+//	std::stringstream tmp;
+//	tmp << t;
+//	return { tmp.str().c_str(), sizeof(T) };
+//}
 
 class MemTableIterator : public Iterator {
 public:
@@ -22,7 +23,9 @@ public:
 		return _iter.hasNext();
 	}
 	void seek(const key_type& k) override {
-		_iter.seek(k);
+		char buf[8];
+		EncodeFixed64(buf, k);
+		_iter.seek(Slice(buf, 8));
 	}
 	void seekToFirst() override {
 		_iter.seekToFirst();
@@ -39,7 +42,7 @@ public:
 		}
 	}
 	Slice key() const override {
-		return SliceHelper(_iter.key());
+		return _iter.key();
 	}
 	Slice value() const override {
 		return { _iter.value() };
@@ -54,16 +57,18 @@ Iterator* MemTable::newIterator() {
 }
 
 void MemTable::put(key_type key, value_type&& val) {
-	char* buf = arena.allocate(val.size());
-	memcpy(buf, val.data(), val.size());
-	size += table.insert(key, Slice(buf, val.size()));
+	char* buf = arena.allocate(val.size() + 8);
+	EncodeFixed64(buf, key);
+	memcpy(buf + 8, val.data(), val.size());
+	size += table.insert(Slice(buf,8), Slice(buf + 8, val.size()));
 }
 value_type MemTable::get(key_type key) const {
+	char buf[8];
+	EncodeFixed64(buf, key);
 	Table::Iterator iter(&table);
-	iter.seek(key);
+	iter.seek(buf);
 	if (iter.hasNext()) {
-		const key_type find_key = iter.key();
-		if (find_key == key) {
+		if (iter.key() == buf) {
 			return iter.value().toString();
 		}
 	}
@@ -75,13 +80,15 @@ MemTable::MemTable() : table(&arena), size(0) {
 }
 
 bool MemTable::del(key_type key) {
-	return table.remove(key, Slice(tombstone,10));
+	char buf[8];
+	EncodeFixed64(buf, key);
+	return table.remove(Slice(buf,8), Slice(tombstone,10));
 }
-bool MemTable::memoryUsage() const {
-	return size < 408;
+size_t MemTable::memoryUsage() const {
+	return size;
 }
 void MemTable::put(key_type key, const value_type& val) {
 	char* buf = arena.allocate(val.size());
 	memcpy(buf, val.data(), val.size());
-	size += table.insert(key, Slice(buf, val.size()));
+	size += table.insert(Slice(buf,8), Slice(buf + 8, val.size()));
 }

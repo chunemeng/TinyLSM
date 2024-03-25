@@ -31,4 +31,5 @@ add_executable(LSMKV.handout correctness.cc
         src/status.h
         src/status.cpp
         src/memtable.cpp
+        src/version.h
 )

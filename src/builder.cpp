@@ -1,23 +1,24 @@
 #include "builder.h"
 #include "../utils/slice.h"
 #include "../utils/iterator.h"
-#include "../utils/filemeta.h"
 #include "../utils/filename.h"
+#include "../utils/writablefile.h"
+#include "../utils/coding.h"
 
-int BuildTable(const std::string& dbname, Iterator* iter,FileMeta *meta) {
+Status BuildTable(const std::string& dbname, Iterator* iter, FileMeta* meta) {
 //	meta->file_size = 0;
 	iter->seekToFirst();
 
 	std::string fname = SSTFileName(dbname, meta->number);
 	if (iter->hasNext()) {
-//		WritableFile* file;
-//		s = env->NewWritableFile(fname, &file);
-//		if (!s.ok()) {
-//			return s;
-//		}
+		WritableFile* file;
+		Status s = NewWritableFile(fname, &file);
+		if (!s.ok()) {
+			return s;
+		}
 
 //		TableBuilder* builder = new TableBuilder(options, file);
-		meta->smallest.DecodeFrom(iter->key());
+		meta->smallest = iter->key();
 		Slice key;
 		for (; iter->hasNext(); iter->next()) {
 
@@ -61,4 +62,5 @@ int BuildTable(const std::string& dbname, Iterator* iter,FileMeta *meta) {
 //	}
 
 
+	}
 }

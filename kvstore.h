@@ -3,6 +3,9 @@
 #include "kvstore_api.h"
 #include "src/memtable.h"
 
+#define MEM_MAX_SIZE 408
+
+
 class KVStore : public KVStoreAPI
 {
 	// You can add your implementation here
@@ -10,9 +13,8 @@ private:
 	MemTable* mem;
 	MemTable* imm;
 
-	size_t timestamp;
 public:
-	KVStore(const std::string &dir);
+	KVStore(const std::string &dir, const std::string& vlog);
 
 	~KVStore();
 
