@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 struct Version {
-	Version(const std::string& file) {
+	Version() {
 
 	}
 	uint64_t fileno = 0;

@@ -8,7 +8,7 @@
 #include "vlogbuilder.h"
 #include "../utils/bloomfilter.h"
 
-Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
+static inline Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
 //	meta->file_size = 0;
 	iter->seekToFirst();
 	FileMeta meta;

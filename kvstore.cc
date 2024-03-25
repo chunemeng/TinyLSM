@@ -4,7 +4,7 @@
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), dbname(dir), vlog_path(vlog),
-	  mem(new MemTable()) {
+	  mem(new MemTable()), v(new Version()) {
 }
 
 KVStore::~KVStore() {
@@ -58,6 +58,6 @@ void KVStore::gc(uint64_t chunk_size) {
 }
 int KVStore::writeLevel0Table(MemTable* memtable) {
 	Iterator* iter = memtable->newIterator();
-	BuildTable(dbname, iter);
+	BuildTable(dbname, v, iter);
 	return 0;
 }

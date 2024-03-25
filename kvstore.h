@@ -2,6 +2,7 @@
 
 #include "kvstore_api.h"
 #include "src/memtable.h"
+#include "src/version.h"
 
 #define MEM_MAX_SIZE 408
 
@@ -12,6 +13,7 @@ class KVStore : public KVStoreAPI
 private:
 	MemTable* mem;
 	MemTable* imm;
+	Version* v;
 	std::string dbname;
 	std::string vlog_path;
 

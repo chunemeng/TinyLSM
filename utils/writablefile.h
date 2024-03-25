@@ -4,8 +4,20 @@
 #include <fcntl.h>
 #include "slice.h"
 #include "../src/status.h"
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#ifndef __Fuchsia__
+#include <sys/resource.h>
+#endif
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 constexpr const size_t kWritableFileBufferSize = 65536;
+constexpr const int kOpenBaseFlags = O_CLOEXEC;
+
 
 static std::string Dirname(const std::string& filename) {
 	std::string::size_type separator_pos = filename.rfind('/');
