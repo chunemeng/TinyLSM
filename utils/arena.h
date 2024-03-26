@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cstdint>
-
+namespace lsm{
 const static int BLOCK_SIZE = 4096;
 class Arena {
 private:
@@ -33,6 +33,7 @@ inline char* Arena::allocate(size_t bytes) {
 		return result;
 	}
 	return allocateFallBack(bytes);
+}
 }
 
 #endif //ARENA_H

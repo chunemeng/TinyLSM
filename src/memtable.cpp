@@ -9,89 +9,91 @@
 //	return { tmp.str().c_str(), sizeof(T) };
 //}
 
-class MemTableIterator : public Iterator {
-public:
-	explicit MemTableIterator(MemTable::Table* table) : _iter(table) {
+namespace lsm {
+	class MemTableIterator : public Iterator {
+	public:
+		explicit MemTableIterator(MemTable::Table* table) : _iter(table) {
+		}
+
+		MemTableIterator(const MemTableIterator&) = delete;
+		MemTableIterator& operator=(const MemTableIterator&) = delete;
+
+		~MemTableIterator() override = default;
+
+		bool hasNext() const override {
+			return _iter.hasNext();
+		}
+		void seek(const key_type& k) override {
+			char buf[8];
+			EncodeFixed64(buf, k);
+			_iter.seek(Slice(buf, 8));
+		}
+		void seekToFirst() override {
+			_iter.seekToFirst();
+		}
+		void next() override {
+			_iter.next();
+		}
+		void scan(const uint64_t& K1,
+			const uint64_t& K2,
+			std::list<std::pair<uint64_t, std::string>>& list) override {
+			char buf[16];
+			EncodeFixed64(buf, K1);
+			EncodeFixed64(buf + 8, K2);
+			_iter.seek(Slice(buf, 8), Slice(buf + 8, 8));
+			for (; _iter.hasNext(); _iter.next()) {
+				list.emplace_back(DecodeFixed64(_iter.key().data()), _iter.value().toString());
+			}
+		}
+		Slice key() const override {
+			return _iter.key();
+		}
+		Slice value() const override {
+			return { _iter.value() };
+		}
+
+	private:
+		MemTable::Table::Iterator _iter;
+	};
+
+	Iterator* MemTable::newIterator() {
+		return new MemTableIterator(&table);
 	}
 
-	MemTableIterator(const MemTableIterator&) = delete;
-	MemTableIterator& operator=(const MemTableIterator&) = delete;
-
-	~MemTableIterator() override = default;
-
-	bool hasNext() const override {
-		return _iter.hasNext();
+	void MemTable::put(key_type key, value_type&& val) {
+		char* buf = arena.allocate(val.size() + 8);
+		EncodeFixed64(buf, key);
+		memcpy(buf + 8, val.data(), val.size());
+		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 	}
-	void seek(const key_type& k) override {
+	value_type MemTable::get(key_type key) const {
 		char buf[8];
-		EncodeFixed64(buf, k);
-		_iter.seek(Slice(buf, 8));
-	}
-	void seekToFirst() override {
-		_iter.seekToFirst();
-	}
-	void next() override {
-		_iter.next();
-	}
-	void scan(const uint64_t& K1,
-		const uint64_t& K2,
-		std::list<std::pair<uint64_t, std::string>>& list) override {
-		char buf[16];
-		EncodeFixed64(buf, K1);
-		EncodeFixed64(buf + 8, K2);
-		_iter.seek(Slice(buf, 8), Slice(buf + 8, 8));
-		for (; _iter.hasNext(); _iter.next()) {
-			list.emplace_back(DecodeFixed64(_iter.key().data()), _iter.value().toString());
+		EncodeFixed64(buf, key);
+		Table::Iterator iter(&table);
+		iter.seek(buf);
+		if (iter.hasNext()) {
+			if (iter.key() == buf) {
+				return iter.value().toString();
+			}
 		}
+		return {};
 	}
-	Slice key() const override {
-		return _iter.key();
-	}
-	Slice value() const override {
-		return { _iter.value() };
+	MemTable::MemTable() : table(&arena), size(0) {
+		tombstone = arena.allocate(10);
+		tombstone = "~DELETED~\0";
 	}
 
-private:
-	MemTable::Table::Iterator _iter;
-};
-
-Iterator* MemTable::newIterator() {
-	return new MemTableIterator(&table);
-}
-
-void MemTable::put(key_type key, value_type&& val) {
-	char* buf = arena.allocate(val.size() + 8);
-	EncodeFixed64(buf, key);
-	memcpy(buf + 8, val.data(), val.size());
-	size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
-}
-value_type MemTable::get(key_type key) const {
-	char buf[8];
-	EncodeFixed64(buf, key);
-	Table::Iterator iter(&table);
-	iter.seek(buf);
-	if (iter.hasNext()) {
-		if (iter.key() == buf) {
-			return iter.value().toString();
-		}
+	bool MemTable::del(key_type key) {
+		char buf[8];
+		EncodeFixed64(buf, key);
+		return table.remove(Slice(buf, 8), Slice(tombstone, 10));
 	}
-	return {};
-}
-MemTable::MemTable() : table(&arena), size(0) {
-	tombstone = arena.allocate(10);
-	tombstone = "~DELETED~\0";
-}
-
-bool MemTable::del(key_type key) {
-	char buf[8];
-	EncodeFixed64(buf, key);
-	return table.remove(Slice(buf, 8), Slice(tombstone, 10));
-}
-size_t MemTable::memoryUsage() const {
-	return size;
-}
-void MemTable::put(key_type key, const value_type& val) {
-	char* buf = arena.allocate(val.size());
-	memcpy(buf, val.data(), val.size());
-	size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
+	size_t MemTable::memoryUsage() const {
+		return size;
+	}
+	void MemTable::put(key_type key, const value_type& val) {
+		char* buf = arena.allocate(val.size());
+		memcpy(buf, val.data(), val.size());
+		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
+	}
 }

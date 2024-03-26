@@ -4,10 +4,12 @@
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), dbname(dir), vlog_path(vlog),
-	  mem(new MemTable()), v(new Version()) {
+	  mem(new lsm::MemTable()), v(new lsm::Version()) {
 }
 
 KVStore::~KVStore() {
+	delete mem;
+	delete v;
 }
 
 /**
@@ -56,8 +58,8 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
  */
 void KVStore::gc(uint64_t chunk_size) {
 }
-int KVStore::writeLevel0Table(MemTable* memtable) {
-	Iterator* iter = memtable->newIterator();
+int KVStore::writeLevel0Table(lsm::MemTable* memtable) {
+	lsm::Iterator* iter = memtable->newIterator();
 	BuildTable(dbname, v, iter);
 	return 0;
 }

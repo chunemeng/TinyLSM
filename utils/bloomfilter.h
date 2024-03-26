@@ -6,7 +6,7 @@
 #include "slice.h"
 #include "../MurmurHash3.h"
 
-namespace bloomfilter {
+namespace lsm {
 static constexpr int filter_size = 8192 * 8;
 
 static inline void CreateFilter(const char* keys, size_t n, int len, char* dst) {

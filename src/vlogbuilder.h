@@ -5,6 +5,7 @@
 #include "../utils/slice.h"
 #include "../utils.h"
 #include "../utils/coding.h"
+namespace lsm{
 class VLogBuilder {
 
 public:
@@ -26,4 +27,5 @@ private:
 	const char* magic = "\377";
 	std::string vlog;
 };
+}
 #endif //VLOGBUILDER_H

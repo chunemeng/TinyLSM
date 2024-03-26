@@ -5,8 +5,10 @@
 #include "status.h"
 #include "../utils/filemeta.h"
 #include "version.h"
-class Iterator;
+namespace lsm {
+	class Iterator;
 
-static inline Status BuildTable(const std::string& dbname, Version *v,Iterator* iter);
+	static inline Status BuildTable(const std::string& dbname, Version* v, Iterator* iter);
+}
 
 #endif //BUILDER_H

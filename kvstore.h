@@ -11,9 +11,9 @@ class KVStore : public KVStoreAPI
 {
 	// You can add your implementation here
 private:
-	MemTable* mem;
-	MemTable* imm;
-	Version* v;
+	lsm::MemTable* mem;
+	lsm::MemTable* imm;
+	lsm::Version* v;
 	std::string dbname;
 	std::string vlog_path;
 
@@ -34,5 +34,5 @@ public:
 
 	void gc(uint64_t chunk_size) override;
 
-	int writeLevel0Table(MemTable* memTable);
+	int writeLevel0Table(lsm::MemTable* memTable);
 };

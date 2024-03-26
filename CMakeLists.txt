@@ -24,9 +24,7 @@ add_executable(LSMKV.handout correctness.cc
         src/builder.h
         utils/filemeta.h
         utils/coding.h
-        utils/filename.cpp
         utils/filename.h
-        utils/writablefile.cpp
         utils/writablefile.h
         src/status.h
         src/status.cpp

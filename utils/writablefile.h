@@ -14,10 +14,9 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+namespace lsm{
 constexpr const size_t kWritableFileBufferSize = 65536;
 constexpr const int kOpenBaseFlags = O_CLOEXEC;
-
 
 static std::string Dirname(const std::string& filename) {
 	std::string::size_type separator_pos = filename.rfind('/');
@@ -139,7 +138,6 @@ Status NewWritableFile(const std::string& filename, WritableFile** result) {
 		*result = nullptr;
 	}
 
-	// 创建一个 PosixWritableFile 对象
 	*result = new WritableFile(filename, fd);
 	return Status::OK();
 }
@@ -155,6 +153,7 @@ Status NewAppendableFile(const std::string& filename,
 
 	*result = new WritableFile(filename, fd);
 	return Status::OK();
+}
 }
 
 #endif //WRITABLEFILE_H
