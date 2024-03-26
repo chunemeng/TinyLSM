@@ -25,6 +25,7 @@ namespace lsm {
 		Arena arena;
 		Table table;
 		const char* tombstone;
+		char* const key_buf = arena.allocate(8);
 	};
 }
 

@@ -111,7 +111,7 @@ namespace lsm {
 			}
 
 			void seekToFirst() {
-				_cur = _list->_head;
+				_cur = _list->_head->next(0);
 			}
 
 		private:
@@ -157,6 +157,7 @@ namespace lsm {
 				n->setnext(i, prev[i]->next(i));
 				prev[i]->setnext(i, n);
 			}
+			return true;
 		}
 
 		bool equal(const K& _key, node* n) const {
@@ -167,6 +168,9 @@ namespace lsm {
 			auto prev = findHelper(key, nullptr);
 			auto cur = prev;
 			if (cur && cur->_key == key) {
+				if (cur->_value == tombstone) {
+					return false;
+				}
 				cur->_value = tombstone;
 				return true;
 			}

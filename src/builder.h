@@ -8,7 +8,7 @@
 namespace lsm {
 	class Iterator;
 
-	static inline Status BuildTable(const std::string& dbname, Version* v, Iterator* iter);
+	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter);
 }
 
 #endif //BUILDER_H

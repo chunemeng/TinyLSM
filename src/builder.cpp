@@ -8,7 +8,7 @@
 #include "vlogbuilder.h"
 #include "../utils/bloomfilter.h"
 namespace lsm {
-	static inline Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
+	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
 		//	meta->file_size = 0;
 		iter->seekToFirst();
 		FileMeta meta;

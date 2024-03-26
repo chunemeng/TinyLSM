@@ -67,12 +67,14 @@ namespace lsm {
 		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 	}
 	value_type MemTable::get(key_type key) const {
-		char buf[8];
-		EncodeFixed64(buf, key);
+		EncodeFixed64(key_buf, key);
 		Table::Iterator iter(&table);
-		iter.seek(buf);
+		iter.seek(key_buf);
 		if (iter.hasNext()) {
-			if (iter.key() == buf) {
+			if (iter.key() == Slice(key_buf,8)) {
+				if (iter.value() == Slice(tombstone, 10)) {
+					return {};
+				}
 				return iter.value().toString();
 			}
 		}
@@ -84,15 +86,14 @@ namespace lsm {
 	}
 
 	bool MemTable::del(key_type key) {
-		char buf[8];
-		EncodeFixed64(buf, key);
-		return table.remove(Slice(buf, 8), Slice(tombstone, 10));
+		EncodeFixed64(key_buf, key);
+		return table.remove(Slice(key_buf, 8), Slice(tombstone, 10));
 	}
 	size_t MemTable::memoryUsage() const {
 		return size;
 	}
 	void MemTable::put(key_type key, const value_type& val) {
-		char* buf = arena.allocate(val.size());
+		char* buf = arena.allocate(val.size() + 8);
 		EncodeFixed64(buf, key);
 		memcpy(buf + 8, val.data(), val.size());
 		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));

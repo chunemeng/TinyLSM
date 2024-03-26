@@ -16,7 +16,7 @@ public:
 		vlog.append(key.data(), 8);
 		vlog.append(4, '\0');
 		vlog.append(value.data());
-		EncodeFixed32(&vlog[offset + 10], key.size());
+		EncodeFixed32(&vlog[offset + 10], value.size());
 		EncodeFixed16(&vlog[offset], utils::crc16(&vlog[offset + 2], vlog.size() - offset - 2));
 	}
 	Slice plain_char() {
