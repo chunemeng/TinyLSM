@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <list>
 #include "slice.h"
-namespace lsm {
+namespace LSMKV {
 	class Iterator {
 	public:
 		Iterator() {};

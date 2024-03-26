@@ -2,7 +2,7 @@
 #define CODING_H
 
 #include <cstdint>
-namespace lsm {
+namespace LSMKV {
 	inline uint64_t DecodeFixed64(const char* ptr) {
 		const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
 

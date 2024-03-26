@@ -5,7 +5,7 @@
 #include <string>
 #include <cstring>
 #include <cassert>
-namespace lsm {
+namespace LSMKV {
 	class Slice {
 	public:
 		Slice() : _data(""), _size(0) {

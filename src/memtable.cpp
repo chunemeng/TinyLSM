@@ -9,7 +9,7 @@
 //	return { tmp.str().c_str(), sizeof(T) };
 //}
 
-namespace lsm {
+namespace LSMKV {
 	class MemTableIterator : public Iterator {
 	public:
 		explicit MemTableIterator(MemTable::Table* table) : _iter(table) {

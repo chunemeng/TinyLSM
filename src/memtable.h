@@ -5,13 +5,13 @@
 #include "../utils/arena.h"
 #include "skiplist.h"
 #include "../utils/iterator.h"
-namespace lsm {
+namespace LSMKV {
 	using key_type = uint64_t;
 	using value_type = std::string;
 
 	class MemTable {
 	public:
-		typedef lsm::Skiplist<Slice, Slice> Table;
+		typedef Skiplist<Slice, Slice> Table;
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		std::string get(key_type key) const;

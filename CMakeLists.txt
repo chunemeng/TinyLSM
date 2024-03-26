@@ -25,10 +25,12 @@ add_executable(LSMKV.handout correctness.cc
         utils/filemeta.h
         utils/coding.h
         utils/filename.h
-        utils/writablefile.h
+        utils/file.h
         src/status.h
         src/status.cpp
         src/memtable.cpp
         src/version.h
         src/vlogbuilder.h
+        src/table.cpp
+        src/table.h
 )

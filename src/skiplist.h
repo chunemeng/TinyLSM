@@ -8,7 +8,7 @@
 #include <random>
 #include <list>
 
-namespace lsm {
+namespace LSMKV {
 #define MAX_LEVEL 16
 	typedef unsigned char byte;
 	template<typename K, typename V>

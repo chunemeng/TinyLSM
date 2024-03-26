@@ -5,7 +5,7 @@
 #include "../utils/slice.h"
 #include "../utils.h"
 #include "../utils/coding.h"
-namespace lsm{
+namespace LSMKV{
 class VLogBuilder {
 
 public:

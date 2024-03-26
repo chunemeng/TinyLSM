@@ -1,7 +1,7 @@
 
 #include <cstdint>
 #include "status.h"
-namespace lsm {
+namespace LSMKV {
 	const char* Status::CopyState(const char* state) {
 		uint32_t size;
 		std::memcpy(&size, state, sizeof(size));

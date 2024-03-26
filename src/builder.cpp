@@ -2,12 +2,12 @@
 #include "../utils/slice.h"
 #include "../utils/iterator.h"
 #include "../utils/filename.h"
-#include "../utils/writablefile.h"
+#include "../utils/file.h"
 #include "../utils/coding.h"
 #include "version.h"
 #include "vlogbuilder.h"
 #include "../utils/bloomfilter.h"
-namespace lsm {
+namespace LSMKV {
 	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter) {
 		//	meta->file_size = 0;
 		iter->seekToFirst();
@@ -22,7 +22,7 @@ namespace lsm {
 			WritableFile* file;
 			WritableFile* vlog;
 			Status s = NewWritableFile(fname, &file);
-			NewWritableFile(fname, &vlog);
+			NewAppendableFile(fname, &vlog);
 
 			if (!s.ok()) {
 				return s;

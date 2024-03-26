@@ -3,7 +3,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cstdint>
-namespace lsm{
+namespace LSMKV{
 const static int BLOCK_SIZE = 4096;
 class Arena {
 private:

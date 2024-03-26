@@ -4,7 +4,7 @@
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), dbname(dir), vlog_path(vlog),
-	  mem(new lsm::MemTable()), v(new lsm::Version()) {
+	  mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)) {
 }
 
 KVStore::~KVStore() {
@@ -18,7 +18,14 @@ KVStore::~KVStore() {
  */
 void KVStore::put(uint64_t key, const std::string& s) {
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
-		writeLevel0Table(mem);
+		if (imm == nullptr) {
+			imm = mem;
+			mem = new LSMKV::MemTable();
+			writeLevel0Table(imm);
+		} else {
+			writeLevel0Table(mem);
+			mem = new LSMKV::MemTable();
+		}
 	}
 	mem->put(key, s);
 }
@@ -42,6 +49,12 @@ bool KVStore::del(uint64_t key) {
  * including memtable and all sstables files.
  */
 void KVStore::reset() {
+	delete mem;
+	delete imm;
+	utils::rmfiles(dbname);
+	v->reset();
+	mem = new LSMKV::MemTable();
+
 }
 
 /**
@@ -50,6 +63,8 @@ void KVStore::reset() {
  * An empty string indicates not found.
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) {
+	LSMKV::Iterator* iter = mem->newIterator();
+	iter->scan(key1, key2, list);
 }
 
 /**
@@ -58,8 +73,9 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
  */
 void KVStore::gc(uint64_t chunk_size) {
 }
-int KVStore::writeLevel0Table(lsm::MemTable* memtable) {
-	lsm::Iterator* iter = memtable->newIterator();
+int KVStore::writeLevel0Table(LSMKV::MemTable* memtable) {
+	LSMKV::Iterator* iter = memtable->newIterator();
 	BuildTable(dbname, v, iter);
+	delete memtable;
 	return 0;
 }

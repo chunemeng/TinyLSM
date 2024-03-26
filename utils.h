@@ -190,4 +190,37 @@ namespace utils {
 		}
 		return crc;
 	}
+
+
+	static inline bool rmfiles(std::string& path) {
+		DIR *dir = opendir(path.c_str());
+		if (dir == nullptr) {
+			return false;
+		}
+
+		dirent *entry;
+		while ((entry = readdir(dir)) != nullptr) {
+			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+				continue;
+			}
+
+			std::string fullPath = std::string(path) + "/" + entry->d_name;
+
+			if (entry->d_type == DT_DIR) {
+				if (!rmfiles(fullPath)) {
+					closedir(dir);
+					return false;
+				}
+			} else {
+				if (rmfile(fullPath) != 0) {
+					closedir(dir);
+					return false;
+				}
+			}
+		}
+
+		closedir(dir);
+
+		return false;
+	}
 }

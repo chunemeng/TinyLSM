@@ -2,7 +2,7 @@
 #define STATUS_H
 
 #include "../utils/slice.h"
-namespace lsm {
+namespace LSMKV {
 	class Status {
 	public:
 		// Create a success status.

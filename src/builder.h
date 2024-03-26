@@ -5,7 +5,7 @@
 #include "status.h"
 #include "../utils/filemeta.h"
 #include "version.h"
-namespace lsm {
+namespace LSMKV {
 	class Iterator;
 
 	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter);

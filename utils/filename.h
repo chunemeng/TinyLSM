@@ -3,7 +3,7 @@
 
 #include <string>
 #include <cstdint>
-namespace lsm {
+namespace LSMKV {
 	std::string MakeFileName(const std::string& dbname, uint64_t number, const std::string& suffix) {
 		return dbname + "/" + std::to_string(number) + "." + suffix;
 	}
@@ -12,6 +12,9 @@ namespace lsm {
 	}
 	std::string VLogFileName(const std::string& dbname) {
 		return dbname + "/" + ".vlog";
+	}
+	std::string VersionFileName(const std::string& dbname) {
+		return dbname + "/" + ".current";
 	}
 }
 

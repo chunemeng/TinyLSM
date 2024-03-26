@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <list>
+#include "utils.h"
 
 class KVStoreAPI {
 public:
@@ -13,6 +14,17 @@ public:
 	 * (https://en.cppreference.com/w/cpp/filesystem).
 	 */
 	KVStoreAPI(const std::string& dir, const std::string& vlog) {
+		if (!utils::dirExists(dir)) {
+			utils::_mkdir(dir);
+		}
+		std::string level_dir = dir + "/" + "level-0";
+		size_t size = level_dir.size();
+		for (int i = 0; i < 8;++i) {
+			level_dir[size] = '0' + i;
+			if (!utils::dirExists(level_dir)) {
+				utils::_mkdir(level_dir);
+			}
+		}
 	}
 	KVStoreAPI() = delete;
 
