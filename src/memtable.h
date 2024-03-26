@@ -11,7 +11,7 @@ namespace lsm {
 
 	class MemTable {
 	public:
-		typedef Skiplist::Skiplist<Slice, Slice> Table;
+		typedef lsm::Skiplist<Slice, Slice> Table;
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		std::string get(key_type key) const;

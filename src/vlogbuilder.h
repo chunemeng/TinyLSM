@@ -10,7 +10,7 @@ class VLogBuilder {
 
 public:
 	void Append(Slice& key, Slice& value) {
-		vlog.append(magic);
+		vlog.append(magic,1);
 		size_t offset = vlog.size();
 		vlog.append(2, '\0');
 		vlog.append(key.data(), 8);

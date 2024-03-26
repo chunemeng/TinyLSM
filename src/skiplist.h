@@ -8,7 +8,7 @@
 #include <random>
 #include <list>
 
-namespace Skiplist {
+namespace lsm {
 #define MAX_LEVEL 16
 	typedef unsigned char byte;
 	template<typename K, typename V>
@@ -32,6 +32,7 @@ namespace Skiplist {
 			return (n != nullptr) && (n->_key < _key);
 		}
 
+		// return the node ahead of node
 		node* findNode(const K& _key) const {
 			node* cur = _head;
 			byte level = getMaxHeight() - 1;
@@ -105,8 +106,8 @@ namespace Skiplist {
 
 			void seek(const K& K1, const K& K2) {
 				_cur = _list->findNode(K1);
-				if (_cur != nullptr && _cur->_key != K1) _cur = _cur->next(0);
-				_end = _list->findNode(K2)->next(0);
+				_end = _list->findNode(K2);
+				if (_end != nullptr && _end->_key == K2) _end = _end->next(0);
 			}
 
 			void seekToFirst() {
@@ -139,8 +140,8 @@ namespace Skiplist {
 			node* prev[MAX_LEVEL];
 			node* n = findHelper(key, prev);
 
-			if (equal(key, n->next(0))) {
-				n->next(0)->_value = std::forward<V>(value);
+			if (equal(key, n)) {
+				n->_value = std::forward<V>(value);
 			}
 
 			byte height = random_level();
@@ -164,7 +165,7 @@ namespace Skiplist {
 
 		bool remove(const K& key, const V& tombstone) {
 			auto prev = findHelper(key, nullptr);
-			auto cur = prev->next(0);
+			auto cur = prev;
 			if (cur && cur->_key == key) {
 				cur->_value = tombstone;
 				return true;

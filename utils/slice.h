@@ -14,7 +14,7 @@ namespace lsm {
 		}
 		Slice(const std::string& str) : _data(str.data()), _size(str.size()) {
 		}
-		Slice(const char* data) : _data(data), _size(strlen(data)) {
+		Slice(const char* data) : _data(data), _size(data ? strlen(data) : 0) {
 		}
 
 		Slice(const Slice&) = default;

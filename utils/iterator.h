@@ -1,5 +1,5 @@
-#ifndef ITERATOR_H
-#define ITERATOR_H
+#ifndef LSM_ITERATOR_H
+#define LSM_ITERATOR_H
 
 #include <cstdint>
 #include <list>
@@ -7,13 +7,12 @@
 namespace lsm {
 	class Iterator {
 	public:
-		Iterator() {
-		};
+		Iterator() {};
 
 		Iterator(const Iterator&) = delete;
 		Iterator& operator=(const Iterator&) = delete;
 
-		virtual ~Iterator();
+		virtual ~Iterator() {};
 
 		virtual bool hasNext() const = 0;
 
@@ -33,4 +32,4 @@ namespace lsm {
 	};
 }
 
-#endif //ITERATOR_H
+#endif //LSM_ITERATOR_H

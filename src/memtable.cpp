@@ -49,7 +49,7 @@ namespace lsm {
 			return _iter.key();
 		}
 		Slice value() const override {
-			return { _iter.value() };
+			return _iter.value() ;
 		}
 
 	private:
@@ -76,7 +76,7 @@ namespace lsm {
 				return iter.value().toString();
 			}
 		}
-		return {};
+		return "";
 	}
 	MemTable::MemTable() : table(&arena), size(0) {
 		tombstone = arena.allocate(10);
@@ -93,7 +93,8 @@ namespace lsm {
 	}
 	void MemTable::put(key_type key, const value_type& val) {
 		char* buf = arena.allocate(val.size());
-		memcpy(buf, val.data(), val.size());
+		EncodeFixed64(buf, key);
+		memcpy(buf + 8, val.data(), val.size());
 		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 	}
 }
