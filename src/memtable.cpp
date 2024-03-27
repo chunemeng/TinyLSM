@@ -98,4 +98,7 @@ namespace LSMKV {
 		memcpy(buf + 8, val.data(), val.size());
 		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
 	}
+	MemTable::~MemTable() {
+		delete
+	}
 }

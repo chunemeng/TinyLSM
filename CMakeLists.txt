@@ -3,12 +3,12 @@ project(LSMKV.handout)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(LSMKV.handout correctness.cc
+add_executable(LSMKV correctness.cc
         kvstore.cc
         kvstore.h
         kvstore_api.h
         MurmurHash3.h
-        persistence.cc
+#        persistence.cc
         test.h
         utils.h
         utils/arena.cpp

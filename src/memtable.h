@@ -19,6 +19,7 @@ namespace LSMKV {
 		explicit MemTable();
 		Iterator* newIterator();
 		size_t memoryUsage() const;
+		~MemTable();
 	private:
 		friend class MemTableIterator;
 		uint32_t size;
