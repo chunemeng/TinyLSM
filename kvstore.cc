@@ -8,8 +8,10 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 }
 
 KVStore::~KVStore() {
-	delete mem;
-	delete v;
+	if (!mem)
+		delete mem;
+	if (!v)
+		delete v;
 }
 
 /**
