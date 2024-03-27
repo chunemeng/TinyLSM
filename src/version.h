@@ -7,8 +7,7 @@
 #include "../utils/coding.h"
 #include "../utils/filename.h"
 namespace LSMKV {
-	class Version {
-	public:
+	struct Version {
 		Version(const std::string& dbname) : filename(VersionFileName(dbname)) {
 			// read from current file
 			if (FileExists(filename)) {
@@ -38,18 +37,7 @@ namespace LSMKV {
 			file->Close();
 			delete file;
 		}
-		uint64_t Fileno() const {
-			return fileno;
-		}
-		uint64_t Timestamp() const {
-			return timestamp;
-		}
-		uint64_t Head() const {
-			return head;
-		}
-		uint64_t Tail() const {
-			return tail;
-		}
+
 		void reset() {
 			fileno = 0;
 			timestamp = 0;
@@ -57,7 +45,6 @@ namespace LSMKV {
 			tail = 0;
 		}
 
-	private:
 		std::string filename;
 		uint64_t fileno = 0;
 		uint64_t timestamp = 0;
