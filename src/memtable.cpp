@@ -24,9 +24,7 @@ namespace LSMKV {
 			return _iter.hasNext();
 		}
 		void seek(const key_type& k) override {
-			char buf[8];
-			EncodeFixed64(buf, k);
-			_iter.seek(Slice(buf, 8));
+			_iter.seek(k);
 		}
 		void seekToFirst() override {
 			_iter.seekToFirst();
@@ -37,15 +35,12 @@ namespace LSMKV {
 		void scan(const uint64_t& K1,
 			const uint64_t& K2,
 			std::list<std::pair<uint64_t, std::string>>& list) override {
-			char buf[16];
-			EncodeFixed64(buf, K1);
-			EncodeFixed64(buf + 8, K2);
-			_iter.seek(Slice(buf, 8), Slice(buf + 8, 8));
+			_iter.seek(K1, K2);
 			for (; _iter.hasNext(); _iter.next()) {
-				list.emplace_back(DecodeFixed64(_iter.key().data()), _iter.value().toString());
+				list.emplace_back(key(), _iter.value().toString());
 			}
 		}
-		Slice key() const override {
+		uint64_t key() const override {
 			return _iter.key();
 		}
 		Slice value() const override {
@@ -61,17 +56,15 @@ namespace LSMKV {
 	}
 
 	void MemTable::put(key_type key, value_type&& val) {
-		char* buf = arena.allocate(val.size() + 8);
-		EncodeFixed64(buf, key);
-		memcpy(buf + 8, val.data(), val.size());
-		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
+		char* buf = arena.allocate(val.size());
+		memcpy(buf, val.data(), val.size());
+		size += table.insert(key, Slice(buf, val.size()));
 	}
 	value_type MemTable::get(key_type key) const {
-		EncodeFixed64(key_buf, key);
 		Table::Iterator iter(&table);
-		iter.seek(key_buf);
+		iter.seek(key);
 		if (iter.hasNext()) {
-			if (iter.key() == Slice(key_buf,8)) {
+			if (iter.key() == key) {
 				if (iter.value() == Slice(tombstone, 10)) {
 					return {};
 				}
@@ -86,17 +79,15 @@ namespace LSMKV {
 	}
 
 	bool MemTable::del(key_type key) {
-		EncodeFixed64(key_buf, key);
-		return table.remove(Slice(key_buf, 8), Slice(tombstone, 10));
+		return table.remove(key, Slice(tombstone, 10));
 	}
 	size_t MemTable::memoryUsage() const {
 		return size;
 	}
 	void MemTable::put(key_type key, const value_type& val) {
-		char* buf = arena.allocate(val.size() + 8);
-		EncodeFixed64(buf, key);
-		memcpy(buf + 8, val.data(), val.size());
-		size += table.insert(Slice(buf, 8), Slice(buf + 8, val.size()));
+		char* buf = arena.allocate(val.size());
+		memcpy(buf, val.data(), val.size());
+		size += table.insert(key, Slice(buf, val.size()));
 	}
 	MemTable::~MemTable() {
 	}

@@ -11,7 +11,7 @@ namespace LSMKV {
 
 	class MemTable {
 	public:
-		typedef Skiplist<Slice, Slice> Table;
+		typedef Skiplist<uint64_t, Slice> Table;
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		std::string get(key_type key) const;
@@ -26,7 +26,7 @@ namespace LSMKV {
 		Arena arena;
 		Table table;
 		const char* tombstone;
-		char* const key_buf = arena.allocate(8);
+//		char* const key_buf = arena.allocate(8);
 	};
 }
 

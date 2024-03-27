@@ -26,7 +26,7 @@ namespace LSMKV {
 			const uint64_t& K2,
 			std::list<std::pair<uint64_t, std::string>>& list) = 0;
 
-		virtual Slice key() const = 0;
+		virtual uint64_t key() const = 0;
 
 		virtual Slice value() const = 0;
 	};

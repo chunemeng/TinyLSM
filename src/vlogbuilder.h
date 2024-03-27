@@ -9,13 +9,14 @@ namespace LSMKV{
 class VLogBuilder {
 
 public:
-	void Append(Slice& key, Slice& value) {
+	void Append(uint64_t& key, Slice& value) {
 		vlog.append(magic,1);
 		size_t offset = vlog.size();
 		vlog.append(2, '\0');
-		vlog.append(key.data(), 8);
+		vlog.append(8,'\0');
 		vlog.append(4, '\0');
 		vlog.append(value.data());
+		EncodeFixed64(&vlog[offset + 2], key);
 		EncodeFixed32(&vlog[offset + 10], value.size());
 		EncodeFixed16(&vlog[offset], utils::crc16(&vlog[offset + 2], vlog.size() - offset - 2));
 	}

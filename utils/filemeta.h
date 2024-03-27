@@ -7,8 +7,8 @@ struct FileMeta {
 	// 8bytes largest 	8 bytes smallest
 	uint64_t timestamp;
 	uint64_t size;
-	const char* largest;
-	const char* smallest;
+	uint64_t largest;
+	uint64_t smallest;
 };
 
 #endif //FILEMETA_H

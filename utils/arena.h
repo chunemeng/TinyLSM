@@ -26,7 +26,7 @@ public:
 
 };
 inline char* Arena::allocate(size_t bytes) {
-	if (bytes >= alloc_bytes_remaining) {
+	if (bytes <= alloc_bytes_remaining) {
 		char* result = alloc_ptr;
 		alloc_ptr += bytes;
 		alloc_bytes_remaining -= bytes;

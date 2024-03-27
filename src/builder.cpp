@@ -28,29 +28,27 @@ namespace LSMKV {
 				return s;
 			}
 
-			meta.smallest = iter->key().data();
-			Slice key;
+			meta.smallest = iter->key();
+			uint64_t key;
 			Slice val;
 			for (; iter->hasNext(); iter->next()) {
 				key = iter->key();
 				val = iter->value();
 				vLogBuilder->Append(key, val);
-				key_buf.append(key.data(), key.size());
-				size_t offset = key.size();
-				key_buf.append(12, '\0');
-				EncodeFixed64(&key_buf[offset], head_offset);
-				EncodeFixed32(&key_buf[offset + 8], val.size());
+				size_t key_offset = key_buf.size();
+				key_buf.append(20,'\0');
+				EncodeFixed64(&key_buf[key_offset], key);
+				EncodeFixed64(&key_buf[key_offset + 8], head_offset);
+				EncodeFixed32(&key_buf[key_offset + 16], val.size());
 				head_offset += val.size() + 15;
 			}
-			if (!key.empty()) {
-				meta.largest = key.data();
-			}
+			meta.largest = key;
 
 			char* sst_meta = new char[8224];
 			EncodeFixed64(sst_meta, v->timestamp++);
 			EncodeFixed64(sst_meta + 8, key_buf.size() / 20);
-			strncpy(sst_meta + 16, meta.smallest, 8);
-			strncpy(sst_meta + 24, meta.largest, 8);
+			EncodeFixed64(sst_meta + 16, meta.smallest);
+			EncodeFixed64(sst_meta + 24, meta.largest);
 			CreateFilter(&key_buf[0], key_buf.size() / 20, 20, sst_meta + 32);
 
 			// need thread
