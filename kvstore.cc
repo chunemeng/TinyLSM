@@ -8,10 +8,8 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 }
 
 KVStore::~KVStore() {
-	if (!mem)
-		delete mem;
-	if (!v)
-		delete v;
+	delete mem;
+	delete v;
 }
 
 /**
@@ -24,6 +22,7 @@ void KVStore::put(uint64_t key, const std::string& s) {
 			imm = mem;
 			mem = new LSMKV::MemTable();
 			writeLevel0Table(imm);
+			imm = nullptr;
 		} else {
 			writeLevel0Table(mem);
 			mem = new LSMKV::MemTable();
@@ -53,10 +52,12 @@ bool KVStore::del(uint64_t key) {
 void KVStore::reset() {
 	delete mem;
 	delete imm;
+
+	// Otherwise it will destructor twice!!!
+	imm = nullptr;
 	utils::rmfiles(dbname);
 	v->reset();
 	mem = new LSMKV::MemTable();
-
 }
 
 /**
