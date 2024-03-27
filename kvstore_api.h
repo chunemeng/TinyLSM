@@ -20,7 +20,7 @@ public:
 		std::string level_dir = dir + "/" + "level-0";
 		size_t size = level_dir.size();
 		for (int i = 0; i < 8;++i) {
-			level_dir[size] = '0' + i;
+			level_dir[size - 1] = '0' + i;
 			if (!utils::dirExists(level_dir)) {
 				utils::_mkdir(level_dir);
 			}

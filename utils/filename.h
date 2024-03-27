@@ -4,16 +4,16 @@
 #include <string>
 #include <cstdint>
 namespace LSMKV {
-	std::string MakeFileName(const std::string& dbname, uint64_t number, const std::string& suffix) {
+	static inline std::string MakeFileName(const std::string& dbname, uint64_t number, const std::string& suffix) {
 		return dbname + "/" + std::to_string(number) + "." + suffix;
 	}
-	std::string SSTFileName(const std::string& dbname, uint64_t number) {
+	static inline std::string SSTFileName(const std::string& dbname, uint64_t number) {
 		return MakeFileName(dbname, number, "sst");
 	}
-	std::string VLogFileName(const std::string& dbname) {
+	static inline std::string VLogFileName(const std::string& dbname) {
 		return dbname + "/" + ".vlog";
 	}
-	std::string VersionFileName(const std::string& dbname) {
+	static inline std::string VersionFileName(const std::string& dbname) {
 		return dbname + "/" + ".current";
 	}
 }
