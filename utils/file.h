@@ -18,7 +18,7 @@ namespace LSMKV {
 	constexpr const size_t kWritableFileBufferSize = 65536;
 	constexpr const int kOpenBaseFlags = O_CLOEXEC;
 
-	static std::string Dirname(const std::string& filename) {
+	static inline std::string Dirname(const std::string& filename) {
 		std::string::size_type separator_pos = filename.rfind('/');
 		if (separator_pos == std::string::npos) {
 			return { "." };
@@ -205,11 +205,11 @@ namespace LSMKV {
 			return SyncFd(_fd, filename);
 		}
 	};
-	bool FileExists(const std::string& filename) {
+	static inline bool FileExists(const std::string& filename) {
 		return ::access(filename.c_str(), F_OK) == 0;
 	}
 
-	Status NewRandomReadableFile(const std::string& filename, RandomReadableFile **result) {
+	static inline Status NewRandomReadableFile(const std::string& filename, RandomReadableFile **result) {
 		*result = nullptr;
 		int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
 		if (fd < 0) {
@@ -239,7 +239,7 @@ namespace LSMKV {
 
 	}
 
-	Status NewWritableFile(const std::string& filename, WritableFile** result) {
+	static inline Status NewWritableFile(const std::string& filename, WritableFile** result) {
 		int fd = ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
 		if (fd < 0) {
 			*result = nullptr;
@@ -249,7 +249,7 @@ namespace LSMKV {
 		return Status::OK();
 	}
 
-	Status NewAppendableFile(const std::string& filename,
+	static inline Status NewAppendableFile(const std::string& filename,
 		WritableFile** result) {
 		int fd = ::open(filename.c_str(),
 			O_APPEND | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
