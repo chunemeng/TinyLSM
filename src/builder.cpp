@@ -15,7 +15,7 @@ namespace LSMKV {
 
 		std::string key_buf, vlog_buf;
 		key_buf.reserve(1024 * 8);
-		auto* vLogBuilder = new VLogBuilder();
+		auto vLogBuilder = new VLogBuilder();
 		std::string fname = SSTFileName(dbname, v->fileno);
 		uint64_t head_offset = v->head;
 		if (iter->hasNext()) {
@@ -60,6 +60,8 @@ namespace LSMKV {
 			file->Append(Slice(sst_meta, 8224));
 			file->Append(Slice(key_buf));
 			file->Close();
+			delete file;
+			delete vlog;
 			delete vLogBuilder;
 			delete[] sst_meta;
 

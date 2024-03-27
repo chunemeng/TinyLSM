@@ -79,6 +79,7 @@ void KVStore::gc(uint64_t chunk_size) {
 int KVStore::writeLevel0Table(LSMKV::MemTable* memtable) {
 	LSMKV::Iterator* iter = memtable->newIterator();
 	BuildTable(dbname, v, iter);
+	delete iter;
 	delete memtable;
 	return 0;
 }
