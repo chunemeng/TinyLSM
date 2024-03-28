@@ -75,7 +75,21 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
  * chunk_size is the _size in byte you should AT LEAST recycle.
  */
 void KVStore::gc(uint64_t chunk_size) {
+	LSMKV::SequentialFile *file;
+	LSMKV::NewSequentialFile(vlog_path,&file);
+	file->Skip(v->tail);
+	// TODO NOT OVERFLOW
+	LSMKV::Slice result;
+	char tmp[2 * chunk_size];
+	file->Read(chunk_size * 2, &result,tmp);
+
+
+	utils::de_alloc_file(vlog_path ,v->tail, chunk_size);
 }
+
+
+
+
 int KVStore::writeLevel0Table(LSMKV::MemTable* memtable) {
 	LSMKV::Iterator* iter = memtable->newIterator();
 	BuildTable(dbname, v, iter);

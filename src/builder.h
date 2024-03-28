@@ -9,6 +9,8 @@ namespace LSMKV {
 	class Iterator;
 
 	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter);
+
+	uint64_t FindLevels(const std::string& dbname, Version* v);
 }
 
 #endif //BUILDER_H

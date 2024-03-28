@@ -33,4 +33,6 @@ add_executable(LSMKV correctness.cc
         src/vlogbuilder.h
         src/table.cpp
         src/table.h
+        src/cache.cpp
+        src/cache.h
 )

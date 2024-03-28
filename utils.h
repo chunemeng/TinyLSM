@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <cstring>
 #include <memory>
+#include "utils/file.h"
 
 #define PAGE_SIZE (4 * 1024)
 
@@ -191,14 +192,43 @@ namespace utils {
 		return crc;
 	}
 
+	static inline uint64_t offset_tail(const std::string& path, uint64_t tail) {
+		LSMKV::RandomReadableFile* file;
+		LSMKV::NewRandomReadableFile(path, &file);
+		// Can get length when read
+		LSMKV::Slice result;
+		const char magic = '\377';
+
+		char tmp[PAGE_SIZE];
+
+		file->Read(tail, PAGE_SIZE, &result, tmp);
+		uint64_t offset = result.size();
+		uint32_t vlen;
+
+		for (uint64_t i = 0; i < offset - 13; i++) {
+			if (tmp[i] == magic && i + 14 < offset) {
+				vlen = LSMKV::DecodeFixed32(tmp + i + 11);
+				if (i + 14 + vlen <= offset) {
+					if (crc16(tmp + 15 + i, vlen) == LSMKV::DecodeFixed16(tmp + 2)) {
+						return i;
+					}
+				} else {
+					break;
+				}
+			}
+		}
+		// After find a page and not found
+		assert(false);
+		return tail;
+	}
 
 	static inline bool rmfiles(std::string& path) {
-		DIR *dir = opendir(path.c_str());
+		DIR* dir = opendir(path.c_str());
 		if (dir == nullptr) {
 			return false;
 		}
 
-		dirent *entry;
+		dirent* entry;
 		while ((entry = readdir(dir)) != nullptr) {
 			if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
 				continue;

@@ -16,6 +16,9 @@ namespace LSMKV {
 	static inline std::string VersionFileName(const std::string& dbname) {
 		return dbname + "/" + ".current";
 	}
+	static inline std::string LevelDirName(const std::string& dbname, uint64_t number) {
+		return dbname+"/" + "level-" + std::to_string(number);
+	}
 }
 
 #endif //FILENAME_H

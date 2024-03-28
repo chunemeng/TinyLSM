@@ -14,6 +14,7 @@ namespace LSMKV {
 		typedef Skiplist<uint64_t, Slice> Table;
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
+		void put(key_type key, const Slice& val);
 		std::string get(key_type key) const;
 		bool del(key_type key);
 		explicit MemTable();
@@ -25,8 +26,7 @@ namespace LSMKV {
 		uint32_t size;
 		Arena arena;
 		Table table;
-		const char* tombstone;
-//		char* const key_buf = arena.allocate(8);
+		static constexpr char tombstone[10] = "~DELETED~";
 	};
 }
 

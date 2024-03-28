@@ -65,7 +65,7 @@ namespace LSMKV {
 		iter.seek(key);
 		if (iter.hasNext()) {
 			if (iter.key() == key) {
-				if (iter.value() == Slice(tombstone, 10)) {
+				if (iter.value() == Slice(tombstone, 8)) {
 					return {};
 				}
 				return iter.value().toString();
@@ -74,12 +74,10 @@ namespace LSMKV {
 		return "";
 	}
 	MemTable::MemTable() : table(&arena), size(0) {
-		tombstone = arena.allocate(10);
-		tombstone = "~DELETED~\0";
 	}
 
 	bool MemTable::del(key_type key) {
-		return table.remove(key, Slice(tombstone, 10));
+		return table.remove(key, Slice(tombstone, 8));
 	}
 	size_t MemTable::memoryUsage() const {
 		return size;
@@ -89,6 +87,12 @@ namespace LSMKV {
 		memcpy(buf, val.data(), val.size());
 		size += table.insert(key, Slice(buf, val.size()));
 	}
+
 	MemTable::~MemTable() {
+	}
+	void MemTable::put(key_type key, const Slice& val) {
+		char* buf = arena.allocate(val.size());
+		memcpy(buf, val.data(), val.size());
+		size += table.insert(key, Slice(buf, val.size()));
 	}
 }

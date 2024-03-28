@@ -8,7 +8,7 @@
 #include "../utils/filename.h"
 namespace LSMKV {
 	struct Version {
-		Version(const std::string& dbname) : filename(VersionFileName(dbname)) {
+		explicit Version(const std::string& dbname) : filename(VersionFileName(dbname)) {
 			// read from current file
 			if (FileExists(filename)) {
 				RandomReadableFile* file;
@@ -24,8 +24,13 @@ namespace LSMKV {
 				}
 			}
 		}
+
 		~Version(){
 			// write into current file
+			close();
+		}
+
+		inline void close() const {
 			WritableFile* file;
 			NewWritableFile(filename, &file);
 			char buf[32];

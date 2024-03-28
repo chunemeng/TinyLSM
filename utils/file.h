@@ -65,6 +65,55 @@ namespace LSMKV {
 		const std::string filename_;
 	};
 
+	class SequentialFile {
+	public:
+		SequentialFile(std::string filename, int fd)
+			: fd_(fd), filename_(std::move(filename)) {
+		}
+		~SequentialFile() {
+			close(fd_);
+		}
+
+		Status Read(size_t n, Slice* result, char* scratch) {
+			Status status;
+			while (true) {
+				::ssize_t read_size = ::read(fd_, scratch, n);
+				if (read_size < 0) {  // Read error.
+					if (errno == EINTR) {
+						continue;  // Retry
+					}
+					status = Status::IOError(filename_);
+					break;
+				}
+				*result = Slice(scratch, read_size);
+				break;
+			}
+			return status;
+		}
+
+		Status Skip(uint64_t n) {
+			if (::lseek(fd_, n, SEEK_CUR) == static_cast<off_t>(-1)) {
+				return Status::IOError(filename_);
+			}
+			return Status::OK();
+		}
+
+	private:
+		const int fd_;
+		const std::string filename_;
+	};
+
+	Status NewSequentialFile(const std::string& filename,
+		SequentialFile** result) {
+		int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
+		if (fd < 0) {
+			*result = nullptr;
+			return Status::IOError(filename);
+		}
+
+		*result = new SequentialFile(filename, fd);
+		return Status::OK();
+	}
 
 	class RandomReadableFile {
 	public:
@@ -74,7 +123,6 @@ namespace LSMKV {
 		}
 
 		~RandomReadableFile() {
-
 			::close(fd_);
 		}
 
@@ -209,7 +257,7 @@ namespace LSMKV {
 		return ::access(filename.c_str(), F_OK) == 0;
 	}
 
-	static inline Status NewRandomReadableFile(const std::string& filename, RandomReadableFile **result) {
+	static inline Status NewRandomReadableFile(const std::string& filename, RandomReadableFile** result) {
 		*result = nullptr;
 		int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
 		if (fd < 0) {
