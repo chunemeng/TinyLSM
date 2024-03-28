@@ -90,9 +90,16 @@ namespace LSMKV {
 
 	MemTable::~MemTable() {
 	}
+
 	void MemTable::put(key_type key, const Slice& val) {
 		char* buf = arena.allocate(val.size());
 		memcpy(buf, val.data(), val.size());
 		size += table.insert(key, Slice(buf, val.size()));
+	}
+	void MemTable::put(key_type key, Slice&& val) {
+		size += table.insert(key, std::move(val));
+	}
+	char* MemTable::reserve(size_t key_size) {
+		return arena.allocate(key_size);
 	}
 }

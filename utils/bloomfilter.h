@@ -24,6 +24,27 @@ static inline void CreateFilter(const char* keys, size_t n, int len, char* dst) 
 
 	}
 }
+	static inline bool KeyMayMatch(const uint64_t& key, const Slice& bloom_filter) {
+		const size_t len = bloom_filter.size();
+		if (len < 2) return false;
+
+		const char* array = bloom_filter.data();
+		const size_t bits = (len) * 8;
+
+		uint32_t hash[4] = { 0 };
+		char buf[8];
+		EncodeFixed64(buf,key);
+		MurmurHash3_x64_128(buf, 8, 1, hash);
+		for (uint32_t h : hash) {
+			const uint32_t delta = (h >> 17) | (h << 15);
+			for (uint32_t k = 0; k < 2; k++) {
+				const uint32_t bitpos = h % bits;
+				if (array[bitpos / 8] & (1 << (bitpos % 8))) return false;
+				h += delta;
+			}
+		}
+		return true;
+	}
 
 static inline bool KeyMayMatch(const Slice& key, const Slice& bloom_filter) {
 	const size_t len = bloom_filter.size();

@@ -35,4 +35,8 @@ add_executable(LSMKV correctness.cc
         src/table.h
         src/cache.cpp
         src/cache.h
+        src/vlogcache.cpp
+        src/vlogcache.h
+        src/keycache.cpp
+        src/keycache.h
 )

@@ -3,8 +3,9 @@
 #include <string>
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
-	: KVStoreAPI(dir, vlog), dbname(dir), vlog_path(vlog),
-	  mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)) {
+	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
+	  dbname(dir), vlog_path(vlog) {
+
 }
 
 KVStore::~KVStore() {
@@ -92,7 +93,9 @@ void KVStore::gc(uint64_t chunk_size) {
 
 int KVStore::writeLevel0Table(LSMKV::MemTable* memtable) {
 	LSMKV::Iterator* iter = memtable->newIterator();
-	BuildTable(dbname, v, iter);
+	FileMeta meta;
+	meta.size = memtable->memoryUsage();
+	BuildTable(dbname, v, iter,meta,kc);
 	delete iter;
 	delete memtable;
 	return 0;

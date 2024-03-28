@@ -10,6 +10,8 @@
 #include <cstring>
 #include <memory>
 #include "utils/file.h"
+#include "utils/coding.h"
+
 
 #define PAGE_SIZE (4 * 1024)
 
@@ -40,6 +42,29 @@ namespace utils {
 			strcpy(s, rent->d_name);
 			if (s[0] != '.') {
 				ret.push_back(s);
+			}
+		}
+		closedir(dir);
+		return ret.size();
+	}
+
+	/**
+ 	 * list all filename in a directory
+ 	 * @param path directory path.
+	 * @param ret all files name in directory.
+ 	 * @return files number.
+ 	 */
+	static inline int scanDirs(const std::string& path, std::vector<std::string>& ret) {
+		DIR* dir;
+		struct dirent* rent;
+		dir = opendir(path.c_str());
+		char s[100];
+		while ((rent = readdir(dir))) {
+			if (rent->d_type == DT_DIR) {
+				strcpy(s, rent->d_name);
+				if (s[0] != '.') {
+					ret.push_back(s);
+				}
 			}
 		}
 		closedir(dir);

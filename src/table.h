@@ -4,25 +4,56 @@
 #include "memtable.h"
 #include "../utils/option.h"
 #include "../utils/coding.h"
+#include "../utils/bloomfilter.h"
 namespace LSMKV {
 
 	//instance of sst
 	static constexpr uint64_t bloom_size = 8192;
 	class Table {
 	public:
-		Table(const char* tmp, Option* option) {
+		explicit Table() {
+			sst = new MemTable();
+		}
+		char* reserve(size_t size) {
+			return sst->reserve(size);
+		}
+		explicit Table(const char* tmp, Option* option) {
 			if ((isFilter = option->isFilter)) {
 				char* bloomer = new char[8192];
-				strncpy(bloomer, tmp, 8192);
+				strncpy(bloomer, tmp + 32, 8192);
 				bloom = Slice(bloomer, 8192);
 			}
+			sst = new MemTable();
 			timestamp = DecodeFixed64(tmp);
 			uint64_t size = DecodeFixed64(tmp + 8);
 			uint64_t offset;
-			for (int i = 0; i < size * 20; i += 20) {
-				sst->put(DecodeFixed64(tmp + bloom_size + i)
-					, Slice(tmp + offset + i + 8, 14));
+
+			// TODO MAY NEED COMPARE!!
+			Slice value_offset;
+			for (uint64_t i = size * 20; i >= 20; i -= 20) {
+				offset = i + bloom_size - 20;
+				value_offset = Slice(tmp + offset + 8, 12);
+				sst->put(DecodeFixed64(tmp + offset)
+					, value_offset);
 			}
+		}
+		void pushCache(const char* tmp) {
+			assert(sst != nullptr);
+			bloom = Slice(tmp + 32, 8192);
+			timestamp = DecodeFixed64(tmp);
+			uint64_t size = DecodeFixed64(tmp + 8);
+			uint64_t offset;
+
+			// TODO MAY NEED COMPARE!!
+			for (uint64_t i = size * 20; i >= 20; i -= 20) {
+				offset = i + bloom_size - 20;
+				sst->put(DecodeFixed64(tmp + offset)
+					, std::move(Slice(tmp + offset + 8, 12)));
+			}
+		}
+
+		bool keyMatch(const uint64_t& key) {
+			return KeyMayMatch(key, bloom);
 		}
 
 		~Table() {

@@ -3,6 +3,7 @@
 #include "kvstore_api.h"
 #include "src/memtable.h"
 #include "src/version.h"
+#include "src/keycache.h"
 
 #define MEM_MAX_SIZE 408
 
@@ -16,6 +17,7 @@ private:
 	LSMKV::Version* v;
 	std::string dbname;
 	std::string vlog_path;
+	LSMKV::KeyCache* kc;
 
 public:
 	KVStore(const std::string &dir, const std::string& vlog);

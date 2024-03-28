@@ -15,8 +15,10 @@ namespace LSMKV {
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		void put(key_type key, const Slice& val);
+		void put(key_type key, Slice&& val);
 		std::string get(key_type key) const;
 		bool del(key_type key);
+		char* reserve(size_t key);
 		explicit MemTable();
 		Iterator* newIterator();
 		size_t memoryUsage() const;
@@ -26,7 +28,7 @@ namespace LSMKV {
 		uint32_t size;
 		Arena arena;
 		Table table;
-		static constexpr char tombstone[10] = "~DELETED~";
+		static constexpr const char* tombstone = "~DELETED~\0";
 	};
 }
 
