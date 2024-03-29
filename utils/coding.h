@@ -1,6 +1,5 @@
 #ifndef CODING_H
 #define CODING_H
-#include <bits.h>
 #include <cstdint>
 #include <bit>
 namespace LSMKV {

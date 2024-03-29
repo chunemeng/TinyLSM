@@ -2,6 +2,42 @@ cmake_minimum_required(VERSION 3.22.1)
 project(LSMKV.handout)
 
 set(CMAKE_CXX_STANDARD 20)
+add_executable(TEST lsm_test.cpp
+        kvstore.cc
+        kvstore.h
+        kvstore_api.h
+        MurmurHash3.h
+        #        persistence.cc
+        test.h
+        utils.h
+        utils/arena.cpp
+        src/skiplist.h
+        src/memtable.h
+        src/memtable.cpp
+        src/memtable.cpp
+        utils/bloomfilter.h
+        utils/iterator.h
+        utils/slice.h
+        utils/option.h
+        src/builder.cpp
+        src/builder.h
+        utils/filemeta.h
+        utils/coding.h
+        utils/filename.h
+        utils/file.h
+        src/status.h
+        src/status.cpp
+        src/memtable.cpp
+        src/version.h
+        src/vlogbuilder.h
+        src/table.h
+        src/cache.cpp
+        src/cache.h
+        src/vlogcache.cpp
+        src/vlogcache.h
+        src/keycache.cpp
+        src/keycache.h
+)
 
 add_executable(LSMKV correctness.cc
         kvstore.cc
