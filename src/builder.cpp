@@ -12,7 +12,7 @@ namespace LSMKV {
 		//	meta->file_size = 0;
 		iter->seekToFirst();
 
-		char* key_buf = kc->ReserveCache(meta.size * 20 + 8222);
+		char* key_buf = kc->ReserveCache(meta.size * 20 + 8224);
 		std::string vlog_buf;
 //		key_buf.reserve(1024 * 8);
 		auto vLogBuilder = new VLogBuilder();
@@ -32,7 +32,7 @@ namespace LSMKV {
 
 			meta.smallest = iter->key();
 			uint64_t key;
-			uint64_t value_size = 0, key_offset = 8222;
+			uint64_t value_size = 0, key_offset = 8224;
 			Slice val;
 			for (; iter->hasNext(); iter->next()) {
 				key = iter->key();
@@ -57,7 +57,7 @@ namespace LSMKV {
 			EncodeFixed64(key_buf + 8, meta.size);
 			EncodeFixed64(key_buf + 16, meta.smallest);
 			EncodeFixed64(key_buf + 24, meta.largest);
-			CreateFilter(key_buf + 8122, meta.size, 20, key_buf + 32);
+			CreateFilter(key_buf + 8224, meta.size, 20, key_buf + 32);
 
 			kc->PushCache(key_buf);
 

@@ -29,7 +29,10 @@ namespace LSMKV {
 					if (!s.ok()) {
 						continue;
 					}
-					file->ReadAll(&result, raw);
+					s = file->ReadAll(&result, raw);
+					if (!s.ok()) {
+						continue;
+					}
 					cache.emplace_back(new Table(result.data(), op));
 					delete file;
 				}

@@ -78,6 +78,9 @@ namespace LSMKV {
 			Status status;
 			stat(filename_.c_str(), &statbuf);
 			size_t length = statbuf.st_size;
+			if (length == 0) {
+				return Status::IOError("empty");
+			}
 			::ssize_t read_size = ::read(fd_, scratch, length);
 			if (read_size < 0) {  // Read error.
 				status = Status::IOError(filename_);
