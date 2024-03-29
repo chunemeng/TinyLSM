@@ -12,33 +12,31 @@ namespace LSMKV {
 	class Table {
 	public:
 		explicit Table() {
-			sst = new MemTable();
 		}
 		char* reserve(size_t size) {
-			return sst->reserve(size);
+			return arena.allocate(size);
 		}
 		explicit Table(const char* tmp, Option option) {
 			if ((isFilter = option.isFilter)) {
-				char* bloomer = new char[8192];
+				char* bloomer = arena.allocate(bloom_size);
 				strncpy(bloomer, tmp + 32, 8192);
 				bloom = Slice(bloomer, 8192);
 			}
-			sst = new MemTable();
 			timestamp = DecodeFixed64(tmp);
 			uint64_t size = DecodeFixed64(tmp + 8);
 			uint64_t offset;
 
 			// TODO MAY NEED COMPARE!!
 			Slice value_offset;
-			for (uint64_t i = size * 20; i >= 20; i -= 20) {
-				offset = i + bloom_size - 20;
+			char* buf = arena.allocate(size * 20);
+			memcpy(buf, tmp + 8222, size * 20);
+			for (uint64_t i = 0; i < size; i += 20) {
+				offset = i + bloom_size;
 				value_offset = Slice(tmp + offset + 8, 12);
-				sst->put(DecodeFixed64(tmp + offset)
-					, value_offset);
+				sst.emplace_back(DecodeFixed64(tmp + offset), value_offset);
 			}
 		}
 		void pushCache(const char* tmp) {
-			assert(sst != nullptr);
 			bloom = Slice(tmp + 32, 8192);
 			timestamp = DecodeFixed64(tmp);
 			uint64_t size = DecodeFixed64(tmp + 8);
@@ -48,11 +46,10 @@ namespace LSMKV {
 			for (uint64_t i = size * 20; i >= 20; i -= 20) {
 				offset = i + bloom_size - 20;
 				// NO NEED TO ALLOCATE NEW MEMORY
-				sst->put(DecodeFixed64(tmp + offset)
-					, std::move(Slice(tmp + offset + 8, 12)));
+				sst.emplace_back(DecodeFixed64(tmp + offset), std::move(Slice(tmp + offset + 8, 12)));
 			}
 		}
-		uint64_t GetTimestamp() const{
+		uint64_t GetTimestamp() const {
 			return timestamp;
 		}
 
@@ -62,7 +59,6 @@ namespace LSMKV {
 
 		~Table() {
 			if (isFilter) {
-				delete sst;
 				delete[] bloom.data();
 			}
 		}
@@ -79,11 +75,28 @@ namespace LSMKV {
 			if (!KeyMatch(key)) {
 				return "";
 			}
-			return sst->get(key);
+			return BinarySearchGet(key);
 		}
+
 	private:
+
+		std::string BinarySearchGet(const uint64_t& key) const {
+			// TODO 斐波那契分割优化(?)
+			uint64_t low = 0, high = sst.size(), mid;
+			while (low <= high) {
+				mid = low + ((high - low) >> 1);
+				if (key < sst[mid].first)
+					high = mid - 1;
+				else if (key > sst[mid].first)
+					low = mid + 1;
+				else
+					return {sst[mid].second.data(), 12};
+			}
+			return "";
+		}
 		bool isFilter = true;
-		MemTable* sst;
+		Arena arena;
+		std::vector<std::pair<uint64_t, Slice>> sst;
 		Slice bloom;
 		uint64_t timestamp = 0;
 	};

@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[]) {
 	auto* p = new KVStore("./data", "./data/vlog");
-	if (argc == 2 && strcmp(argv[1], "clean") == 0) {
+	if (argc == 2 && strcmp(argv[1], "-c") == 0) {
 		p->reset();
 		return 0;
 	}
@@ -15,6 +15,5 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < 1000; i++) {
 		p->get(i);
 	}
-	p->reset();
 	delete p;
 }
