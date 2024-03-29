@@ -31,7 +31,7 @@ namespace LSMKV {
 			sst.reserve(size * 20);
 			char* buf = arena.allocate(size * 20);
 			memcpy(buf, tmp + 8224, size * 20);
-			for (uint64_t i = 0; i < size; i += 20) {
+			for (uint64_t i = 0; i < size * 20; i += 20) {
 				value_offset = Slice(tmp + offset + 8 + i, 12);
 				sst.emplace_back(DecodeFixed64(tmp + offset + i), value_offset);
 
@@ -45,7 +45,7 @@ namespace LSMKV {
 
 			// TODO MAY NEED COMPARE!!
 			sst.reserve(size * 20);
-			for (uint64_t i = 0; i < size; i += 20) {
+			for (uint64_t i = 0; i < size * 20; i += 20) {
 				// NO NEED TO ALLOCATE NEW MEMORY
 				sst.emplace_back(DecodeFixed64(tmp + offset + i), std::move(Slice(tmp + offset + 8 + i, 12)));
 			}
