@@ -45,7 +45,7 @@ namespace LSMKV {
 				return;
 			#endif
 		}
-		memcpy(buffer, &value, 8);
+		memcpy(buffer, &value, 2);
 	}
 
 	inline void EncodeFixed32(char* dst, uint32_t value) {
@@ -61,7 +61,7 @@ namespace LSMKV {
 				return;
 			#endif
 		}
-		memcpy(buffer, &value, 8);
+		memcpy(buffer, &value, 4);
 
 	}
 
