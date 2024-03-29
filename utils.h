@@ -268,15 +268,9 @@ namespace utils {
 			std::string fullPath = std::string(path) + "/" + entry->d_name;
 
 			if (entry->d_type == DT_DIR) {
-				if (!rmfiles(fullPath)) {
-					closedir(dir);
-					return false;
-				}
+				rmfiles(fullPath);
 			} else {
-				if (rmfile(fullPath) != 0) {
-					closedir(dir);
-					return false;
-				}
+				rmfile(fullPath);
 			}
 		}
 

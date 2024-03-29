@@ -38,7 +38,7 @@ namespace LSMKV {
 			EncodeFixed64(buf + 8, timestamp);
 			EncodeFixed64(buf + 16, head);
 			EncodeFixed64(buf + 24, tail);
-			file->Append(buf);
+			file->Append(Slice(buf,32));
 			file->Close();
 			delete file;
 		}
