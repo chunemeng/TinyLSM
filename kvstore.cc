@@ -49,10 +49,8 @@ std::string KVStore::get(uint64_t key) {
 		LSMKV::RandomReadableFile *file;
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(s.data()), len,&result,buf);
-		std::string s = {result.data(), len};
-		std::cout<<s<<std::endl;
 		delete file;
-		return {result.data(), result.size()};
+		return {result.data() + 15, result.size()};
 	}
 	return s;
 }
