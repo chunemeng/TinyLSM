@@ -37,11 +37,14 @@ namespace utils {
 		DIR* dir;
 		struct dirent* rent;
 		dir = opendir(path.c_str());
+		if (dir == nullptr) {
+			return -1;
+		}
 		char s[100];
 		while ((rent = readdir(dir))) {
 			strcpy(s, rent->d_name);
 			if (s[0] != '.') {
-				ret.push_back(s);
+				ret.emplace_back(s);
 			}
 		}
 		closedir(dir);
@@ -58,6 +61,9 @@ namespace utils {
 		DIR* dir;
 		struct dirent* rent;
 		dir = opendir(path.c_str());
+		if (dir == nullptr) {
+			return -1;
+		}
 		char s[100];
 		while ((rent = readdir(dir))) {
 			if (rent->d_type == DT_DIR) {

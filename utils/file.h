@@ -79,7 +79,7 @@ namespace LSMKV {
 			stat(filename_.c_str(), &statbuf);
 			size_t length = statbuf.st_size;
 			scratch.reserve(length);
-			::ssize_t read_size = ::read(fd_, scratch, n);
+			::ssize_t read_size = ::read(fd_, &scratch[0], length);
 			if (read_size < 0) {  // Read error.
 				status = Status::IOError(filename_);
 			}
