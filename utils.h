@@ -63,7 +63,7 @@ namespace utils {
 			if (rent->d_type == DT_DIR) {
 				strcpy(s, rent->d_name);
 				if (s[0] != '.') {
-					ret.push_back(s);
+					ret.emplace_back(s);
 				}
 			}
 		}

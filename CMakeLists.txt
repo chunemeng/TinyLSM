@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(LSMKV.handout)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 
 add_executable(LSMKV correctness.cc
         kvstore.cc
@@ -31,7 +31,6 @@ add_executable(LSMKV correctness.cc
         src/memtable.cpp
         src/version.h
         src/vlogbuilder.h
-        src/table.cpp
         src/table.h
         src/cache.cpp
         src/cache.h

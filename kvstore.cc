@@ -5,7 +5,7 @@
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
 	  dbname(dir), vlog_path(vlog) {
-
+	kc = new LSMKV::KeyCache(dir);
 }
 
 KVStore::~KVStore() {
@@ -36,7 +36,21 @@ void KVStore::put(uint64_t key, const std::string& s) {
  * An empty string indicates not found.
  */
 std::string KVStore::get(uint64_t key) {
-	return mem->get(key);
+	std::string s = mem->get(key);
+	if (s.empty()) {
+		s = kc->get(key);
+		if (s.empty()) {
+			return "";
+		}
+		LSMKV::Slice result;
+		uint32_t len = LSMKV::DecodeFixed32(s.data() + 8);
+		char buf[len];
+		LSMKV::RandomReadableFile *file;
+		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
+		file->Read(LSMKV::DecodeFixed64(s.data()), len,&result,buf);
+		return {result.data(), result.size()};
+	}
+	return s;
 }
 /**
  * Delete the given key-value pair if it exists.

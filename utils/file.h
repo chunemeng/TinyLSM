@@ -75,10 +75,16 @@ namespace LSMKV {
 		}
 		Status ReadAll(Slice* result, std::string& scratch) {
 			struct stat statbuf;
+			Status status;
 			stat(filename_.c_str(), &statbuf);
 			size_t length = statbuf.st_size;
 			scratch.reserve(length);
-
+			::ssize_t read_size = ::read(fd_, scratch, n);
+			if (read_size < 0) {  // Read error.
+				status = Status::IOError(filename_);
+			}
+			*result = Slice(scratch.data(), read_size);
+			return Status::OK();
 		}
 
 		Status Read(size_t n, Slice* result, char* scratch) {

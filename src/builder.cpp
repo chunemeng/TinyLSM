@@ -59,7 +59,9 @@ namespace LSMKV {
 			EncodeFixed64(key_buf + 24, meta.largest);
 			CreateFilter(key_buf + 8122, meta.size, 20, key_buf + 32);
 
-			// need thread
+			kc->PushCache(key_buf);
+
+			// need multi thread
 			vlog->Append(vLogBuilder->plain_char());
 			vlog->Close();
 

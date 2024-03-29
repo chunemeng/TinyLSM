@@ -17,8 +17,8 @@ namespace LSMKV {
 		char* reserve(size_t size) {
 			return sst->reserve(size);
 		}
-		explicit Table(const char* tmp, Option* option) {
-			if ((isFilter = option->isFilter)) {
+		explicit Table(const char* tmp, Option option) {
+			if ((isFilter = option.isFilter)) {
 				char* bloomer = new char[8192];
 				strncpy(bloomer, tmp + 32, 8192);
 				bloom = Slice(bloomer, 8192);
@@ -47,12 +47,16 @@ namespace LSMKV {
 			// TODO MAY NEED COMPARE!!
 			for (uint64_t i = size * 20; i >= 20; i -= 20) {
 				offset = i + bloom_size - 20;
+				// NO NEED TO ALLOCATE NEW MEMORY
 				sst->put(DecodeFixed64(tmp + offset)
 					, std::move(Slice(tmp + offset + 8, 12)));
 			}
 		}
+		uint64_t GetTimestamp() const{
+			return timestamp;
+		}
 
-		bool keyMatch(const uint64_t& key) {
+		bool KeyMatch(const uint64_t& key) {
 			return KeyMayMatch(key, bloom);
 		}
 
@@ -63,6 +67,20 @@ namespace LSMKV {
 			}
 		}
 
+		bool operator<(const Table& rhs) const {
+			return timestamp < rhs.timestamp;
+		}
+
+		bool operator<(const uint64_t& rhs) const {
+			return timestamp < rhs;
+		}
+
+		std::string get(uint64_t key) {
+			if (!KeyMatch(key)) {
+				return "";
+			}
+			return sst->get(key);
+		}
 	private:
 		bool isFilter = true;
 		MemTable* sst;
