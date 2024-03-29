@@ -73,17 +73,16 @@ namespace LSMKV {
 		~SequentialFile() {
 			close(fd_);
 		}
-		Status ReadAll(Slice* result, std::string& scratch) {
+		Status ReadAll(Slice* result, char* scratch) {
 			struct stat statbuf;
 			Status status;
 			stat(filename_.c_str(), &statbuf);
 			size_t length = statbuf.st_size;
-			scratch.reserve(length);
-			::ssize_t read_size = ::read(fd_, &scratch[0], length);
+			::ssize_t read_size = ::read(fd_, scratch, length);
 			if (read_size < 0) {  // Read error.
 				status = Status::IOError(filename_);
 			}
-			*result = Slice(scratch.data(), read_size);
+			*result = Slice(scratch, read_size);
 			return Status::OK();
 		}
 

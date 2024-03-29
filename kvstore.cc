@@ -1,6 +1,7 @@
 #include "kvstore.h"
 #include "src/builder.h"
 #include <string>
+#include <iostream>
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
@@ -48,6 +49,9 @@ std::string KVStore::get(uint64_t key) {
 		LSMKV::RandomReadableFile *file;
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(s.data()), len,&result,buf);
+		std::string s = {result.data(), len};
+		std::cout<<s<<std::endl;
+		delete file;
 		return {result.data(), result.size()};
 	}
 	return s;

@@ -15,20 +15,26 @@ namespace LSMKV {
 			std::vector<std::string> files;
 			utils::scanDirs(db_path, dirs);
 			Slice result;
-			std::string raw;
+			char* raw = new char[16 * 1024];
 			Option op;
 			SequentialFile* file;
+			Status s;
+			std::string path_name;
 			for (auto& dir : dirs) {
 				files.clear();
-				utils::scanDir(dir, files);
+				path_name = db_path + "/" + dir;
+				utils::scanDir(path_name, files);
 				for (auto& file_name : files) {
-					NewSequentialFile(db_path + "/"+dir +"/"+ file_name, &file);
-					file->ReadAll(&result,raw);
-					cache.emplace_back(new Table(result.data(),op));
+					s = NewSequentialFile(path_name + "/" + file_name, &file);
+					if (!s.ok()) {
+						continue;
+					}
+					file->ReadAll(&result, raw);
+					cache.emplace_back(new Table(result.data(), op));
 					delete file;
-					raw.clear();
 				}
 			}
+			delete[] raw;
 		};
 		char* ReserveCache(size_t size) {
 			assert(tmp_cache == nullptr);
@@ -45,14 +51,14 @@ namespace LSMKV {
 		std::string get(uint64_t key) {
 			uint64_t current = UINT64_MAX;
 			std::string result;
-			for (auto & table:cache) {
+			for (auto& table : cache) {
 				if (table->GetTimestamp() < current) {
 					if (!((result = table->get(key)).empty())) {
 						current = table->GetTimestamp();
 					}
 				}
 			}
-			return {result.empty() ? "" : result};
+			return { result.empty() ? "" : result };
 		}
 
 		~KeyCache() {
