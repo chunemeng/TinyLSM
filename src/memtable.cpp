@@ -65,7 +65,7 @@ namespace LSMKV {
 		iter.seek(key);
 		if (iter.hasNext()) {
 			if (iter.key() == key) {
-				if (iter.value() == Slice(tombstone, 8)) {
+				if (iter.value() == Slice(tombstone, 9)) {
 					return {};
 				}
 				return iter.value().toString();
@@ -78,7 +78,7 @@ namespace LSMKV {
 
 	bool MemTable::del(key_type key) {
 		// Maybe useless
-		return table.remove(key, Slice(tombstone, 8));
+		return table.remove(key, Slice(tombstone, 9));
 	}
 	size_t MemTable::memoryUsage() const {
 		return size;
