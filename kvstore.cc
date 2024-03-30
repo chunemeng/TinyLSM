@@ -47,7 +47,7 @@ std::string KVStore::get(uint64_t key) {
 			return "";
 		}
 		s = kc->get(key);
-		if (s.empty()) {
+		if (s.empty() || mem->DELETED(s)) {
 			return "";
 		}
 		LSMKV::Slice result;
