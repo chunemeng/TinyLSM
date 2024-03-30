@@ -74,4 +74,5 @@ add_executable(LSMKV correctness.cc
         src/vlogcache.h
         src/keycache.cpp
         src/keycache.h
+        src/table.cpp
 )

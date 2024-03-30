@@ -84,8 +84,29 @@ void KVStore::reset() {
  * An empty string indicates not found.
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) {
+	kc->scan(key1, key2, list);
+	std::map<uint64_t, std::string> map;
+	for (auto & it : list) {
+		LSMKV::Slice result;
+		uint32_t len = LSMKV::DecodeFixed32(it.second.data() + 8);
+		char buf[len + 15];
+		LSMKV::RandomReadableFile *file;
+		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
+		file->Read(LSMKV::DecodeFixed64(it.second.data()), len + 15,&result,buf);
+		delete file;
+		std::cout << result.size() - 15 << std::endl;
+		map.insert(std::make_pair(it.first,  std::string {result.data() + 15, result.size() - 15}));
+	}
 	LSMKV::Iterator* iter = mem->newIterator();
-	iter->scan(key1, key2, list);
+	std::list<std::pair<uint64_t, std::string>> tmp_list;
+	iter->scan(key1, key2, tmp_list);
+	for (auto & it : tmp_list) {
+		map.insert(it);
+	}
+	for (auto & it : map) {
+		list.emplace_back(it);
+	}
+	delete iter;
 }
 
 /**

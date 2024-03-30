@@ -6,7 +6,6 @@
 #include "../utils/coding.h"
 #include "../utils/bloomfilter.h"
 namespace LSMKV {
-
 	//instance of sst
 	static constexpr uint64_t bloom_size = 8192;
 	class Table {
@@ -50,7 +49,7 @@ namespace LSMKV {
 				sst.emplace_back(DecodeFixed64(tmp + offset + i), std::move(Slice(tmp + offset + 8 + i, 12)));
 			}
 		}
-		uint64_t GetTimestamp() const {
+		[[nodiscard]] uint64_t GetTimestamp() const {
 			return timestamp;
 		}
 
@@ -76,34 +75,74 @@ namespace LSMKV {
 			if (!KeyMatch(key)) {
 				return "";
 			}
-			return BinarySearchGet(key);
+			uint64_t offset = BinarySearchGet(0, sst.size(), key);
+			if (offset >= sst.size()) {
+				return "";
+			} else {
+				return { sst[offset].second.data(), sst[offset].second.size() };
+			}
 		}
-
 	private:
-
-		std::string BinarySearchGet(const uint64_t& key) const {
-			// TODO 斐波那契分割优化(?)
-			uint64_t low = 1, high = sst.size() - 1, mid;
-			if (key == sst[0].first) {
-				return { sst[0].second.data(), 12 };
-			}
-			while (low <= high) {
-				mid = low + ((high - low) >> 1);
-				if (key < sst[mid].first)
-					high = mid - 1;
-				else if (key > sst[mid].first)
-					low = mid + 1;
-				else
-					return { sst[mid].second.data(), 12 };
-			}
-			return "";
-		}
+		friend class TableIterator;
+		[[nodiscard]] uint64_t BinarySearchGet(const uint64_t& start, const uint64_t& end, const uint64_t& key) const;
 		bool isFilter = true;
 		Arena arena;
 		std::vector<std::pair<uint64_t, Slice>> sst;
 		Slice bloom;
 		uint64_t timestamp = 0;
+	public:
+		class TableIterator {
+		public:
+			explicit TableIterator(const Table* table) : _table(table), _cur(0) {
+				_end = _table->sst.size();
+			};
+			~TableIterator() {
+				delete _table;
+			}
+			[[nodiscard]] bool hasNext() const {
+				return _end > _cur;
+			}
+			const Slice value() const {
+				return _table->sst[_cur].second;
+			}
+			const uint64_t& key() const {
+				return _table->sst[_cur].first;
+			}
+			void next() {
+				_cur++;
+			}
+			void seek(const uint64_t& key) {
+				_cur = _table->BinarySearchGet(0, _end, key);
+				_end = _table->sst.size();
+			}
+
+			void seek(const uint64_t& K1, const uint64_t& K2) {
+				_cur = _table->BinarySearchGet(0, _end, K1);
+				_end = _table->BinarySearchGet(0, _end, K1);
+				if (_end != _table->sst.size()) _end++;
+			}
+
+			void seekToFirst() {
+				_cur = 0;
+			}
+
+			uint64_t timestamp() {
+				return _table->timestamp;
+			}
+
+		private:
+			// not include _end!!!!
+			uint64_t _cur;
+			uint64_t _end;
+			const Table* _table;
+		};
+		TableIterator* Iterator() {
+			return new Table::TableIterator(this);
+		}
 	};
+
+
+
 }
 
 #endif //LSMKV_SRC_TABLE_H
