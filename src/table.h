@@ -53,7 +53,7 @@ namespace LSMKV {
 			return timestamp;
 		}
 
-		bool KeyMatch(const uint64_t& key) {
+		bool KeyMatch(const uint64_t& key) const {
 			return KeyMayMatch(key, bloom);
 		}
 
@@ -83,8 +83,52 @@ namespace LSMKV {
 			}
 		}
 	private:
-		friend class TableIterator;
-		[[nodiscard]] uint64_t BinarySearchGet(const uint64_t& start, const uint64_t& end, const uint64_t& key) const;
+		[[nodiscard]] uint64_t BinarySearchGet(const uint64_t& start, const uint64_t& end, const uint64_t& key) const {
+			// TODO 斐波那契分割优化(?)
+			// NOT INCLUDE END
+			uint64_t left = 0, right = sst.size(),mid;
+			while (left < right) {
+				mid = left + ((right - left) >> 1);
+				if (sst[mid].first < key)
+					left = mid + 1;
+				else
+					right = mid;
+			}
+			// To avoid False positive
+			if (left <= sst.size() && sst[left].first == key) {
+				return left;
+			}
+
+			return sst.size();
+//			assert(start < end && start < sst.size() && end < sst.size());
+//			uint64_t low = start + 1, high = end - 1, mid;
+//			if (key == sst[start].first) {
+//				return start;
+//			}
+//			while (low <= high) {
+//				mid = low + ((high - low) >> 1);
+//				if (key < sst[mid].first)
+//					high = mid - 1;
+//				else if (key > sst[mid].first)
+//					low = mid + 1;
+//				else
+//					return mid;
+//			}
+//			return sst.size();
+		}
+		[[nodiscard]] uint64_t BinarySearchLocation(const uint64_t& start, const uint64_t& end, const uint64_t& key) const {
+			// TODO 斐波那契分割优化(?)
+			// NOT INCLUDE END
+			uint64_t left = 0, right = sst.size(),mid;
+			while (left < right) {
+				mid = left + ((right - left) >> 1);
+				if (sst[mid].first < key)
+					left = mid + 1;
+				else
+					right = mid;
+			}
+			return left;
+		}
 		bool isFilter = true;
 		Arena arena;
 		std::vector<std::pair<uint64_t, Slice>> sst;
@@ -112,14 +156,23 @@ namespace LSMKV {
 				_cur++;
 			}
 			void seek(const uint64_t& key) {
+				if (!_table->KeyMatch(key)) {
+					_end = 0;
+					_cur = 1;
+					return;
+				}
 				_cur = _table->BinarySearchGet(0, _end, key);
 				_end = _table->sst.size();
 			}
 
 			void seek(const uint64_t& K1, const uint64_t& K2) {
-				_cur = _table->BinarySearchGet(0, _end, K1);
-				_end = _table->BinarySearchGet(0, _end, K1);
-				if (_end != _table->sst.size()) _end++;
+//				if (!_table->KeyMatch(K1)) {
+//					_end = 0;
+//					_cur = 1;
+//					return;
+//				}
+				_cur = _table->BinarySearchLocation(0, _end, K1);
+				_end = _table->BinarySearchLocation(_cur, _end, K2);
 			}
 
 			void seekToFirst() {
@@ -140,8 +193,6 @@ namespace LSMKV {
 			return new Table::TableIterator(this);
 		}
 	};
-
-
 
 }
 
