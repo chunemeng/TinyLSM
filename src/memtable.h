@@ -29,7 +29,7 @@ namespace LSMKV {
 		uint32_t size;
 		Arena arena;
 		Table table;
-		static constexpr const char* tombstone = "~DELETED~\0";
+		static constexpr const char* tombstone = "~DELETED~";
 	};
 }
 

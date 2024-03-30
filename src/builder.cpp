@@ -18,8 +18,8 @@ namespace LSMKV {
 		auto vLogBuilder = new VLogBuilder();
 		std::string fname = SSTFileName(LevelDirName(dbname, FindLevels(dbname,v)), v->fileno++);
 		uint64_t head_offset = v->head;
-		char tmp[10] = "~DELETED~";
-		Slice tombstone = Slice(tmp,10);
+		const char* tmp = "~DELETED~";
+		Slice tombstone = Slice(tmp,9);
 		if (iter->hasNext()) {
 			WritableFile* file;
 			WritableFile* vlog;
