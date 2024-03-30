@@ -62,9 +62,10 @@ namespace LSMKV {
 							it->second = std::make_pair(table->timestamp(), table->value());
 						}
 					}
+					table->next();
 				}
 			}
-			for (auto& iter : key_map) {
+			for (auto & iter : key_map) {
 				list.emplace_back(iter.first, std::string{ iter.second.second.data(), iter.second.second.size() });
 			}
 		}

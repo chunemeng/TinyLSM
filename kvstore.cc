@@ -50,7 +50,6 @@ std::string KVStore::get(uint64_t key) {
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(s.data()), len + 15,&result,buf);
 		delete file;
-		std::cout << result.size() - 15 << std::endl;
 		return {result.data() + 15, result.size() - 15};
 	}
 	return s;
@@ -84,9 +83,10 @@ void KVStore::reset() {
  * An empty string indicates not found.
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) {
-	kc->scan(key1, key2, list);
+	std::list<std::pair<uint64_t, std::string>> li;
+	kc->scan(key1, key2, li);
 	std::map<uint64_t, std::string> map;
-	for (auto & it : list) {
+	for (auto & it : li) {
 		LSMKV::Slice result;
 		uint32_t len = LSMKV::DecodeFixed32(it.second.data() + 8);
 		char buf[len + 15];
@@ -121,8 +121,6 @@ void KVStore::gc(uint64_t chunk_size) {
 	LSMKV::Slice result;
 	char tmp[2 * chunk_size];
 	file->Read(chunk_size * 2, &result,tmp);
-
-
 	utils::de_alloc_file(vlog_path ,v->tail, chunk_size);
 }
 
