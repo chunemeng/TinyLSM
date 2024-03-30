@@ -10,7 +10,11 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 }
 
 KVStore::~KVStore() {
-	delete mem;
+	if (mem->memoryUsage() != 0) {
+		writeLevel0Table(mem);
+	} else {
+		delete mem;
+	}
 	delete v;
 }
 
@@ -85,6 +89,7 @@ void KVStore::reset() {
 	imm = nullptr;
 	utils::rmfiles(dbname);
 	v->reset();
+	kc->reset();
 	mem = new LSMKV::MemTable();
 }
 

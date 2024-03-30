@@ -22,15 +22,17 @@ namespace LSMKV {
 					head = DecodeFixed64(buf + 16);
 					tail = DecodeFixed64(buf + 24);
 				}
+			} else {
+				WriteToFile();
 			}
 		}
 
 		~Version(){
 			// write into current file
-			close();
+			WriteToFile();
 		}
 
-		inline void close() const {
+		inline void WriteToFile() const {
 			WritableFile* file;
 			NewWritableFile(filename, &file);
 			char buf[32];
@@ -48,6 +50,7 @@ namespace LSMKV {
 			timestamp = 0;
 			head = 0;
 			tail = 0;
+			WriteToFile();
 		}
 
 		std::string filename;

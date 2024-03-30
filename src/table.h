@@ -58,9 +58,6 @@ namespace LSMKV {
 		}
 
 		~Table() {
-			if (isFilter) {
-				delete[] bloom.data();
-			}
 		}
 
 		bool operator<(const Table& rhs) const {

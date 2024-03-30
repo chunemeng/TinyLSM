@@ -43,6 +43,14 @@ namespace LSMKV {
 			}
 			delete[] raw;
 		};
+		void reset() {
+			if (tmp_cache != nullptr) {
+				delete tmp_cache;
+			}
+			for (auto& it : cache) {
+				delete it;
+			}
+		}
 		char* ReserveCache(size_t size) {
 			assert(tmp_cache == nullptr);
 			tmp_cache = new Table();
