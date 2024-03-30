@@ -43,6 +43,9 @@ void KVStore::put(uint64_t key, const std::string& s) {
 std::string KVStore::get(uint64_t key) {
 	std::string s = mem->get(key);
 	if (s.empty()) {
+		if (kc->empty()) {
+			return "";
+		}
 		s = kc->get(key);
 		if (s.empty()) {
 			return "";

@@ -50,6 +50,7 @@ namespace LSMKV {
 			for (auto& it : cache) {
 				delete it;
 			}
+			cache.clear();
 		}
 		char* ReserveCache(size_t size) {
 			assert(tmp_cache == nullptr);
@@ -110,6 +111,9 @@ namespace LSMKV {
 			for (auto& it : cache) {
 				delete it;
 			}
+		}
+		bool empty() const {
+			return cache.empty();
 		}
 	private:
 		Table* tmp_cache = nullptr;
