@@ -11,7 +11,7 @@ namespace LSMKV {
 		return MakeFileName(dbname, number, "sst");
 	}
 	static inline std::string VLogFileName(const std::string& dbname) {
-		return dbname + "/" + ".vlog";
+		return dbname + "/" + "vlog";
 	}
 	static inline std::string VersionFileName(const std::string& dbname) {
 		return dbname + "/" + ".current";

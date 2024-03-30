@@ -4,7 +4,7 @@
 #include "../utils/slice.h"
 namespace LSMKV {
 	class Cache;
-
+	// Value Cache
 // Create a new cache with a fixed size capacity.  This implementation
 // of Cache uses a least-recently-used eviction policy.
 	Cache* NewLRUCache(size_t capacity);
@@ -33,15 +33,14 @@ namespace LSMKV {
 		//
 		// When the inserted entry is no longer needed, the key and
 		// value will be passed to "deleter".
-		virtual Handle* Insert(const Slice& key, void* value, size_t charge,
-			void (* deleter)(const Slice& key, void* value)) = 0;
+		virtual Handle* Insert(const uint64_t& key,const Slice& value) = 0;
 
 		// If the cache has no mapping for "key", returns nullptr.
 		//
 		// Else return a handle that corresponds to the mapping.  The caller
 		// must call this->Release(handle) when the returned mapping is no
 		// longer needed.
-		virtual Handle* Lookup(const Slice& key) = 0;
+		virtual Handle* Lookup(const uint64_t& key) = 0;
 
 		// Release a mapping returned by a previous Lookup().
 		// REQUIRES: handle must not have been released yet.
@@ -52,12 +51,12 @@ namespace LSMKV {
 		// successful Lookup().
 		// REQUIRES: handle must not have been released yet.
 		// REQUIRES: handle must have been returned by a method on *this.
-		virtual void* Value(Handle* handle) = 0;
+		virtual const char* Value(Handle* handle) = 0;
 
 		// If the cache contains entry for key, erase it.  Note that the
 		// underlying entry will be kept around until all existing handles
 		// to it have been released.
-		virtual void Erase(const Slice& key) = 0;
+		virtual void Erase(const uint64_t& key) = 0;
 
 		// Return a new numeric id.  May be used by multiple clients who are
 		// sharing the same cache to partition the key space.  Typically the
