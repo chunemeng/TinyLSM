@@ -65,9 +65,6 @@ namespace LSMKV {
 		iter.seek(key);
 		if (iter.hasNext()) {
 			if (iter.key() == key) {
-				if (iter.value() == Slice(tombstone, 9)) {
-					return {};
-				}
 				return iter.value().toString();
 			}
 		}
@@ -102,5 +99,8 @@ namespace LSMKV {
 	}
 	char* MemTable::reserve(size_t key_size) {
 		return arena.allocate(key_size);
+	}
+	bool MemTable::DELETED(const std::string& s) {
+		return s == tombstone;
 	}
 }

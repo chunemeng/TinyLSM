@@ -55,6 +55,9 @@ std::string KVStore::get(uint64_t key) {
 		delete file;
 		return {result.data() + 15, result.size() - 15};
 	}
+	if (mem->DELETED(s)) {
+		return "";
+	}
 	return s;
 }
 /**
@@ -63,7 +66,7 @@ std::string KVStore::get(uint64_t key) {
  */
 bool KVStore::del(uint64_t key) {
 	std::string s = get(key);
-	if (!s.empty()) {
+	if (!s.empty() && !mem->DELETED(s)) {
 		put(key, "~DELETED~");
 		return true;
 	}
