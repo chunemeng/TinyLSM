@@ -45,6 +45,9 @@ std::string KVStore::get(uint64_t key) {
 		}
 		LSMKV::Slice result;
 		uint32_t len = LSMKV::DecodeFixed32(s.data() + 8);
+		if (len == 0) {
+			return "";
+		}
 		char buf[len + 15];
 		LSMKV::RandomReadableFile *file;
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
@@ -59,7 +62,12 @@ std::string KVStore::get(uint64_t key) {
  * Returns false iff the key is not found.
  */
 bool KVStore::del(uint64_t key) {
-	return mem->del(key);
+	std::string s = get(key);
+	if (!s.empty()) {
+		put(key, "~DELETED~");
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -94,7 +102,6 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(it.second.data()), len + 15,&result,buf);
 		delete file;
-		std::cout << result.size() - 15 << std::endl;
 		map.insert(std::make_pair(it.first,  std::string {result.data() + 15, result.size() - 15}));
 	}
 	LSMKV::Iterator* iter = mem->newIterator();

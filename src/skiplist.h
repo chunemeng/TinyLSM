@@ -142,6 +142,7 @@ namespace LSMKV {
 
 			if (equal(key, n)) {
 				n->_value = std::forward<V>(value);
+				return false;
 			}
 
 			byte height = random_level();

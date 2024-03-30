@@ -166,14 +166,9 @@ namespace LSMKV {
 			}
 
 			void seek(const uint64_t& K1, const uint64_t& K2) {
-//				if (!_table->KeyMatch(K1)) {
-//					_end = 0;
-//					_cur = 1;
-//					return;
-//				}
 				_cur = _table->BinarySearchLocation(0, _end, K1);
 				_end = _table->BinarySearchLocation(_cur, _end, K2);
-				if (_end < _table->sst.size() && _table->sst[_end].first == K1) {
+				if (_end < _table->sst.size() && _table->sst[_end].first == K2) {
 					_end++;
 				}
 			}

@@ -77,6 +77,7 @@ namespace LSMKV {
 	}
 
 	bool MemTable::del(key_type key) {
+		// Maybe useless
 		return table.remove(key, Slice(tombstone, 8));
 	}
 	size_t MemTable::memoryUsage() const {

@@ -19,6 +19,7 @@ namespace LSMKV {
 		std::string get(key_type key) const;
 		bool del(key_type key);
 		char* reserve(size_t key);
+		const char* DeleteFlag() const;
 		explicit MemTable();
 		Iterator* newIterator();
 		size_t memoryUsage() const;
