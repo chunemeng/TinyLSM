@@ -7,7 +7,7 @@
 #include "../utils.h"
 #include <map>
 #include <ranges>
-#include <scoped_allocator>
+
 
 namespace LSMKV {
 	class KeyCache {
@@ -83,13 +83,20 @@ namespace LSMKV {
 		}
 		std::string get(const uint64_t& key) {
 			TableIterator *table;
-			for (auto & it : std::ranges::reverse_view(cache)) {
-				table = it.second;
+			for (auto it= cache.rbegin(); it != cache.rend(); it++) {
+				table = it->second;
 				table->seek(key);
 				if (table->hasNext()) {
 					return { table->value().data(), table->value().size() };
 				}
 			}
+//			for (auto & it : std::ranges::reverse_view(cache)) {
+//				table = it.second;
+//				table->seek(key);
+//				if (table->hasNext()) {
+//					return { table->value().data(), table->value().size() };
+//				}
+//			}
 			return {};
 		}
 
@@ -107,14 +114,22 @@ namespace LSMKV {
 		}
 		bool GetOffset(const uint64_t& key, uint64_t& offset) {
 			TableIterator *table;
-			for (auto & it : std::ranges::reverse_view(cache)) {
-				table = it.second;
+			for (auto it= cache.rbegin(); it != cache.rend(); it++) {
+				table = it->second;
 				table->seek(key);
 				if (table->hasNext()) {
 					offset = DecodeFixed64(table->value().data());
 					return true;
 				}
 			}
+//			for (auto & it : std::ranges::reverse_view(cache)) {
+//				table = it.second;
+//				table->seek(key);
+//				if (table->hasNext()) {
+//					offset = DecodeFixed64(table->value().data());
+//					return true;
+//				}
+//			}
 			return false;
 		}
 	private:
