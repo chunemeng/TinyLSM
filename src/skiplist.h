@@ -1,12 +1,12 @@
 #ifndef SKIPLIST_H
 #define SKIPLIST_H
 
-#include <string>
 #include "../utils/arena.h"
 #include <cstdint>
 #include <ctime>
 #include <random>
-#include <list>
+#include <bit>
+#include <atomic>
 
 namespace LSMKV {
 #define MAX_LEVEL 16
@@ -41,6 +41,9 @@ namespace LSMKV {
 				if (KeyIsAfterNode(_key, next)) {
 					cur = next;
 				} else {
+					if (equal(_key, next)) {
+						return next;
+					}
 					if (level == 0) {
 						return next;
 					} else {
@@ -58,6 +61,9 @@ namespace LSMKV {
 				if (KeyIsAfterNode(key, next)) {
 					cur = next;
 				} else {
+					if (equal(key, next)) {
+						return next;
+					}
 					if (prev != nullptr) prev[level] = cur;
 					if (level == 0) {
 						return next;
@@ -67,21 +73,27 @@ namespace LSMKV {
 				}
 			}
 		}
-		byte random_level() {
-			byte level = 1;
-			while (!(gen() & 4) && ++level < MAX_LEVEL) {
-			}
-			return level;
+
+//		byte random_level() {
+//			byte level = 1;
+//			while (!(gen() & 4) && ++level < MAX_LEVEL) {
+//			}
+//			return level;
+//		}
+		byte random_level(){
+			// Twice faster than upper
+			return MAX_LEVEL - std::bit_width((uint32_t)((uint32_t (1 << MAX_LEVEL) - 1) & gen())) + 1;
 		}
+
 		inline byte getMaxHeight() const {
-			return max_level;
+			return max_level.load(std::memory_order_relaxed);
 		}
 		node* createNode(const K& key, V&& value, const byte& level) {
 			auto node_memory = arena->allocateAligned(sizeof(node) + sizeof(node*) * (level - 1));
 			return new(node_memory) node(key, std::forward<V>(value));
 		}
 		Arena* arena;
-		byte max_level;
+		std::atomic<byte> max_level;
 		node* _head;
 		std::mt19937 gen;
 	public:
@@ -150,7 +162,7 @@ namespace LSMKV {
 				for (byte i = getMaxHeight(); i < height; i++) {
 					prev[i] = _head;
 				}
-				max_level = height;
+				max_level.store(height, std::memory_order_relaxed);
 			}
 
 			n = createNode(key, std::forward<V>(value), height);
@@ -166,7 +178,7 @@ namespace LSMKV {
 		}
 
 		bool remove(const K& key, const V& tombstone) {
-			auto prev = findHelper(key, nullptr);
+			auto prev = findNode(key);
 			auto cur = prev;
 			if (cur && cur->_key == key) {
 				if (cur->_value == tombstone) {

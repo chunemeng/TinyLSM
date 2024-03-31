@@ -2,6 +2,7 @@
 #include "../MurmurHash3.h"
 
 namespace LSMKV {
+	Cache::~Cache() {}
 	// USE AS VALUE_CACHE
 	struct LRUHandle {
 		Slice value;
