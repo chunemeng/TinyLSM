@@ -8,7 +8,6 @@
 #include <map>
 #include <ranges>
 
-
 namespace LSMKV {
 	class KeyCache {
 		typedef Table::TableIterator TableIterator;
@@ -24,13 +23,21 @@ namespace LSMKV {
 			Option op;
 			SequentialFile* file;
 			Status s;
-			std::string path_name;
+			std::string path_name = db_path + "/";
+			size_t dir_size;
+			size_t file_size;
+
 			for (auto& dir : dirs) {
 				files.clear();
-				path_name = db_path + "/" + dir;
+
+				dir_size = path_name.size();
+				path_name.append(dir);
+				path_name.append("/");
+				file_size = path_name.size();
 				utils::scanDir(path_name, files);
 				for (auto& file_name : files) {
-					s = NewSequentialFile(path_name + "/" + file_name, &file);
+					path_name.append(file_name);
+					s = NewSequentialFile(path_name, &file);
 					if (!s.ok()) {
 						continue;
 					}
@@ -42,7 +49,9 @@ namespace LSMKV {
 					cache.insert(std::make_pair(it->timestamp(), it));
 //					cache.emplace_back();
 					delete file;
+					path_name.resize(file_size);
 				}
+				path_name.resize(dir_size);
 			}
 			delete[] raw;
 		};

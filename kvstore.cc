@@ -195,7 +195,9 @@ void KVStore::gc(uint64_t chunk_size) {
 			}
 			current_size += len + 15;
 		}
+		delete[] tmp;
 	}
+
 
 	utils::de_alloc_file(vlog_path, v->tail, current_size);
 	v->tail += current_size;
