@@ -8,7 +8,7 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
 	  dbname(dir), vlog_path(vlog) {
 	kc = new LSMKV::KeyCache(dir);
-	cache = LSMKV::NewLRUCache(100);
+//	cache = LSMKV::NewLRUCache(100);
 }
 
 KVStore::~KVStore() {
@@ -21,7 +21,7 @@ KVStore::~KVStore() {
 		delete imm;
 	}
 	delete v;
-	delete cache;
+//	delete cache;
 	delete kc;
 }
 
@@ -189,7 +189,7 @@ void KVStore::gc(uint64_t chunk_size) {
 			}
 			if (CheckCrc(ptr, len + 12) && kc->GetOffset(key, offset) && offset == v->tail + current_size) {
 				value = LSMKV::Slice(ptr + 15, len);
-				cache->Insert(new_offset, value);
+//				cache->Insert(new_offset, value);
 				mem->put(key, value);
 				new_offset += len + 15;
 			}
