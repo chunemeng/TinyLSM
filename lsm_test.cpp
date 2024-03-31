@@ -14,11 +14,12 @@ int main(int argc, char *argv[]) {
 		p->put(i,std::string(i+1,'s'));
 	}
 	for (int i = 0; i < 1000; i++) {
-		if (p->get(i) != std::string(i+1,'s')) {
-			std::cout<<i<<std::endl;
-			std::cout<<p->get(i)<<std::endl;
+		p->del(i &2);
+	}
+	for (int i = 0; i < 1000; i++) {
+		if (p->del(i &2)) {
+			std::cout << i << std::endl;
 		}
-		p->get(i);
 	}
 	delete p;
 }
