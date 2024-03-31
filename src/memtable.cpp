@@ -63,10 +63,8 @@ namespace LSMKV {
 	value_type MemTable::get(key_type key) const {
 		Table::Iterator iter(&table);
 		iter.seek(key);
-		if (iter.hasNext()) {
-			if (iter.key() == key) {
-				return iter.value().toString();
-			}
+		if (iter.hasNext() && iter.key() == key) {
+			return iter.value().toString();
 		}
 		return "";
 	}

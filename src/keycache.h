@@ -69,7 +69,6 @@ namespace LSMKV {
 				while (table->hasNext()) {
 					key_map.insert(std::make_pair(table->key(),
 						std::string{ table->value().data(), table->value().size() }));
-
 					table->next();
 				}
 			}
@@ -83,17 +82,15 @@ namespace LSMKV {
 			tmp_cache = nullptr;
 		}
 		std::string get(const uint64_t& key) {
-			std::string result;
 			TableIterator *table;
 			for (auto & it : std::ranges::reverse_view(cache)) {
 				table = it.second;
 				table->seek(key);
 				if (table->hasNext()) {
-					result = { table->value().data(), table->value().size() };
+					return { table->value().data(), table->value().size() };
 				}
 			}
-			return { result.empty() ? "" : result };
-
+			return {};
 		}
 
 		~KeyCache() {
