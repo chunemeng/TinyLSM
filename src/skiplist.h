@@ -9,7 +9,7 @@
 #include <atomic>
 
 namespace LSMKV {
-#define MAX_LEVEL 16
+	static constexpr int MAX_LEVEL = 16;
 	typedef unsigned char byte;
 	template<typename K, typename V>
 	class Skiplist {
@@ -17,12 +17,18 @@ namespace LSMKV {
 		struct node {
 			K const _key;
 			V _value;
-			node* _next[1];
+			std::atomic<node*> _next[1];
 			node* next(const byte& level) {
-				return _next[level];
+				return _next[level].load(std::memory_order_acquire);
 			}
 			void setnext(const byte& l, node* n) {
-				_next[l] = n;
+				_next[l].store(n, std::memory_order_release);
+			}
+			node* NoBarrier_Next(const byte& level) {
+				return _next[level].load(std::memory_order_relaxed);
+			}
+			void NoBarrier_SetNext(const byte& l, node* n) {
+				_next[l].store(n, std::memory_order_relaxed);
 			}
 			node(const K& key, V&& value) : _key(key), _value(std::forward<V>(value)) {
 			}
@@ -82,14 +88,14 @@ namespace LSMKV {
 //		}
 		byte random_level(){
 			// Twice faster than upper
-			return MAX_LEVEL - std::bit_width((uint32_t)((uint32_t (1 << MAX_LEVEL) - 1) & gen())) + 1;
+			return MAX_LEVEL - std::bit_width((uint32_t)(((1 << (MAX_LEVEL - 1)) - 1) & gen()));
 		}
 
 		inline byte getMaxHeight() const {
 			return max_level.load(std::memory_order_relaxed);
 		}
 		node* createNode(const K& key, V&& value, const byte& level) {
-			auto node_memory = arena->allocateAligned(sizeof(node) + sizeof(node*) * (level - 1));
+			auto node_memory = arena->allocateAligned(sizeof(node) + sizeof(std::atomic<node*>) * (level - 1));
 			return new(node_memory) node(key, std::forward<V>(value));
 		}
 		Arena* arena;
@@ -167,7 +173,7 @@ namespace LSMKV {
 
 			n = createNode(key, std::forward<V>(value), height);
 			for (int i = 0; i < height; i++) {
-				n->setnext(i, prev[i]->next(i));
+				n->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
 				prev[i]->setnext(i, n);
 			}
 			return true;
