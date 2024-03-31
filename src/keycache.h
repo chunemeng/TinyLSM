@@ -21,7 +21,7 @@ namespace LSMKV {
 			Slice result;
 			char* raw = new char[16 * 1024];
 			Option op;
-			SequentialFile* file;
+			RandomReadableFile* file;
 			Status s;
 			std::string path_name = db_path + "/";
 			size_t dir_size;
@@ -37,11 +37,11 @@ namespace LSMKV {
 				utils::scanDir(path_name, files);
 				for (auto& file_name : files) {
 					path_name.append(file_name);
-					s = NewSequentialFile(path_name, &file);
+					s = NewRandomReadableFile(path_name, &file);
 					if (!s.ok()) {
 						continue;
 					}
-					s = file->ReadAll(&result, raw);
+					s = file->Read(0,16*1024,&result, raw);
 					if (!s.ok()) {
 						continue;
 					}
