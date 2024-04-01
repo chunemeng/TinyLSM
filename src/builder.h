@@ -10,6 +10,7 @@ namespace LSMKV {
 	class Iterator;
 
 	Status BuildTable(const std::string& dbname, Version* v, Iterator* iter, FileMeta& file,KeyCache* kc);
+	Status SSTCompaction(uint64_t level,uint64_t file_no, Version *v, KeyCache *kc);
 
 	uint64_t FindLevels(const std::string& dbname, Version* v);
 }

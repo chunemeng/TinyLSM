@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <cstdio>
 #include <fcntl.h>
 #include <cstring>
 #include <memory>
@@ -278,4 +279,8 @@ namespace utils {
 
 		return false;
 	}
-}
+
+	static inline int mvfile(std::string&& old_path,std::string&& new_path ) {
+		return std::rename(old_path.c_str(),new_path.c_str());
+	}
+	}

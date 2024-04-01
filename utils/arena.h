@@ -5,6 +5,7 @@
 #include <cstdint>
 namespace LSMKV{
 const static int BLOCK_SIZE = 4096;
+// TODO REWRITE ARENA FOR ALIGN BYTE AND FIND A NEW MAGIC NUMBER
 class Arena {
 private:
 	char* alloc_ptr;

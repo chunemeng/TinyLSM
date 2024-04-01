@@ -7,7 +7,7 @@
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
 	  dbname(dir), vlog_path(vlog) {
-	kc = new LSMKV::KeyCache(dir);
+	kc = new LSMKV::KeyCache(dir,v);
 //	cache = LSMKV::NewLRUCache(100);
 }
 
@@ -129,7 +129,9 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 		map.insert(it);
 	}
 	for (auto& it : map) {
-		list.emplace_back(it);
+		if (!mem->DELETED(it.second)) {
+			list.emplace_back(it);
+		}
 	}
 	delete iter;
 }
