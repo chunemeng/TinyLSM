@@ -13,13 +13,13 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < 1000; i++) {
 		p->put(i,std::string(i+1,'s'));
 	}
-	for (int i = 0; i < 1000; i++) {
-		p->del(i &2);
-	}
-	for (int i = 0; i < 1000; i++) {
-		if (p->del(i &2)) {
-			std::cout << i << std::endl;
-		}
-	}
+//	for (int i = 0; i < 1000; i++) {
+//		p->del(i &2);
+//	}
+//	for (int i = 0; i < 1000; i++) {
+//		if (p->del(i &2)) {
+//			std::cout << i << std::endl;
+//		}
+//	}
 	delete p;
 }

@@ -6,6 +6,7 @@
 #include "../utils/coding.h"
 #include "../utils/bloomfilter.h"
 #include <map>
+#include <unordered_set>
 namespace LSMKV {
 	//instance of sst
 	static constexpr uint64_t bloom_size = 8192;
@@ -49,9 +50,10 @@ namespace LSMKV {
 			}
 			timestamp = DecodeFixed64(tmp);
 			uint64_t size = DecodeFixed64(tmp + 8);
-			uint64_t offset = (op.isFilter ? bloom_size : 0) + 32;
+			uint64_t offset = bloom_size + 32;
 
 			// TODO MAY NEED COMPARE!!
+            if (size > 0)
 			sst.reserve(size * 20);
 			for (uint64_t i = 0; i < size * 20; i += 20) {
 				// NO NEED TO ALLOCATE NEW MEMORY
@@ -160,6 +162,7 @@ namespace LSMKV {
 			};
 			~TableIterator() {
 				delete _table;
+                _table = nullptr;
 			}
 			uint64_t size() const{
 				return _table->sst.size();

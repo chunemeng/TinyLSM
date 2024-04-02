@@ -35,15 +35,11 @@ namespace LSMKV {
 				return s;
 			}
 			v->AddNewLevelStatus(level, v->fileno, 1);
-				if (v->LevelOver(level)) {
-				key_buf = kc->ReserveCache(meta.size * 20 + 32, v->fileno);
-				key_offset = 32;
-				op.isFilter = false;
+            if (v->LevelOver(level)) {
 				compaction = true;
-			} else {
-				key_buf = kc->ReserveCache(meta.size * 20 + 8224, v->fileno);
-				key_offset = 8224;
 			}
+            key_buf = kc->ReserveCache(meta.size * 20 + 8224, v->fileno);
+            key_offset = 8224;
 
 			meta.smallest = iter->key();
 			uint64_t key;
@@ -98,8 +94,6 @@ namespace LSMKV {
 		return Status::IOError("Iter is empty");
 	}
 	Status SSTCompaction(uint64_t level, uint64_t file_no, Version* v, KeyCache* kc) {
-		// Need To Add New level
-		std::vector<uint64_t> new_files;
 		std::vector<uint64_t> need_to_move;
 		//Need to be rm and earse in version
 		std::vector<uint64_t> old_files[2] = { std::vector<uint64_t>(), std::vector<uint64_t>() };
@@ -121,6 +115,8 @@ namespace LSMKV {
 		WriteSlice(need_to_write, level, v);
 		// update level status
 		v->AddNewLevelStatus(level + 1, v->fileno - need_to_write.size(), need_to_write.size());
+        // remove old sst
+        v->ClearLevelStatus(level, old_files);
 		// PASS THE COMPACTION
 		if (v->LevelOver(level + 1)) {
 			SSTCompaction(level + 1, v->fileno, v, kc);
