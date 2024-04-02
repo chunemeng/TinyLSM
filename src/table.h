@@ -59,9 +59,9 @@ namespace LSMKV {
 			}
 		}
 
-		bool StartPtr(const char** tmp) {
-			*tmp = bloom.data();
-			return isFilter;
+		const char* StartPtr() {
+			// todo for not isFilter
+			return bloom.data();
 		}
 
 		[[nodiscard]] uint64_t GetTimestamp() const {
@@ -161,9 +161,12 @@ namespace LSMKV {
 			~TableIterator() {
 				delete _table;
 			}
-//			const char* StartPointer() {
-//				return _table->StartPtr();
-//			}
+			uint64_t size() const{
+				return _table->sst.size();
+			}
+			const char* StartPointer() {
+				return _table->StartPtr();
+			}
 			[[nodiscard]] bool hasNext() const {
 				return _end > _cur;
 			}
@@ -172,6 +175,9 @@ namespace LSMKV {
 			}
 			const uint64_t& key() const {
 				return _table->sst[_cur].first;
+			}
+			bool AtStart() const {
+				return _cur == 0;
 			}
 			void next() {
 				_cur++;

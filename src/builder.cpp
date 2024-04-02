@@ -34,8 +34,8 @@ namespace LSMKV {
 			if (!s.ok()) {
 				return s;
 			}
-			v->AddNewLevelStatus(level, v->fileno);
-			if (v->LevelFull(level)) {
+			v->AddNewLevelStatus(level, v->fileno, 1);
+				if (v->LevelOver(level)) {
 				key_buf = kc->ReserveCache(meta.size * 20 + 32, v->fileno);
 				key_offset = 32;
 				op.isFilter = false;
@@ -89,9 +89,8 @@ namespace LSMKV {
 			delete vLogBuilder;
 //			delete[] sst_meta;
 			if (compaction) {
-				SSTCompaction(level, v->fileno, v, kc);
+				SSTCompaction(level, v->fileno++, v, kc);
 			}
-			v->fileno++;
 			return Status::OK();
 		}
 		return Status::IOError("Iter is empty");
@@ -99,28 +98,58 @@ namespace LSMKV {
 	Status SSTCompaction(uint64_t level, uint64_t file_no, Version* v, KeyCache* kc) {
 		// Need To Add New level
 		std::vector<uint64_t> new_files;
-
+		std::vector<uint64_t> need_to_move;
 		//Need to be rm and earse in version
 		std::vector<uint64_t> old_files[2] = { std::vector<uint64_t>(), std::vector<uint64_t>() };
 		std::vector<Slice> need_to_write;
 		if (v->NeedNewLevel(level)) {
 			v->AddNewLevel();
 		}
-		kc->CompactionSST(level,
+		uint64_t timestamp = kc->CompactionSST(level,
 			file_no,
 			old_files,
-			new_files,
+			need_to_move,
 			need_to_write,
 			v->GetLevelStatus(level),
 			v->GetLevelStatus(level + 1));
-		v->ClearLevelStatus(level, old_files);
-
+		// move
+		MoveToNewLevel(level, timestamp, need_to_move, v);
+		v->MoveLevelStatus(level, need_to_move);
+		// write
+		WriteSlice(need_to_write, level, v);
+		// update level status
+		v->AddNewLevelStatus(level + 1, v->fileno - need_to_write.size(), need_to_write.size());
+		// PASS THE COMPACTION
+		if (v->LevelOver(level + 1)) {
+			SSTCompaction(level + 1, v->fileno, v, kc);
+		}
+		return Status::OK();
 	}
-	Status MoveToNewLevel(uint64_t level, std::vector<uint64_t>& new_files, Version* v) {
+	Status WriteSlice(std::vector<Slice>& need_to_write, uint64_t level, Version* v) {
+		WritableFile* file;
+		auto dbname = v->DBName();
+		for (auto& s : need_to_write) {
+			NewWritableFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
+			file->Append(s);
+			file->Close();
+			delete file;
+		}
+	}
+	Status MoveToNewLevel(uint64_t level, const uint64_t& timestamp, std::vector<uint64_t>& new_files, Version* v) {
 		std::string dbname = v->DBName();
 		for (auto& it : new_files) {
-			utils::mvfile(SSTFilePath(dbname, level, it)
-				, SSTFilePath(dbname, level + 1, it));
+			utils::mvfile(SSTFilePath(dbname, level, it), SSTFilePath(dbname, level + 1, it));
+		}
+		// todo move faster than rewrite(?)
+		WritableFile* file;
+		char buf[8];
+		// Change the timestamp
+		for (auto& it : new_files) {
+			NewWriteAtStartFile(SSTFilePath(dbname, level + 1, it), &file);
+			EncodeFixed64(buf, timestamp);
+			file->Append(Slice(buf, 8));
+			file->Close();
+			delete file;
 		}
 	}
 

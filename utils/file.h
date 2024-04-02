@@ -324,6 +324,20 @@ namespace LSMKV {
 		*result = new WritableFile(filename, fd);
 		return Status::OK();
 	}
+
+	static inline Status NewWriteAtStartFile(const std::string& filename,
+		WritableFile** result) {
+		int fd = ::open(filename.c_str(),
+			O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
+		::lseek(fd, 0, SEEK_END);
+		if (fd < 0) {
+			*result = nullptr;
+			return Status::IOError(filename);
+		}
+
+		*result = new WritableFile(filename, fd);
+		return Status::OK();
+	}
 }
 
 #endif //WRITABLEFILE_H

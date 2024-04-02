@@ -37,7 +37,7 @@ namespace LSMKV {
 			}
 		}
 
-		~Version(){
+		~Version() {
 			// write into current file
 			WriteToFile();
 		}
@@ -51,7 +51,7 @@ namespace LSMKV {
 			EncodeFixed64(buf + 16, head);
 			EncodeFixed64(buf + 24, tail);
 			EncodeFixed64(buf + 32, max_level);
-			file->Append(Slice(buf,32));
+			file->Append(Slice(buf, 32));
 			file->Close();
 			delete file;
 		}
@@ -64,7 +64,7 @@ namespace LSMKV {
 			max_level = 7;
 			WriteToFile();
 		}
-		std::string DBName() {
+		std::string DBName() const {
 			return Dirname(filename);
 		}
 
@@ -77,8 +77,16 @@ namespace LSMKV {
 			for (int i = 0; i < 2; ++i) {
 				for (auto& it : old_files[i]) {
 					status[level].erase(fileno);
-					utils::rmfile(SSTFileName(dir_name, it));
+					utils::rmfile(SSTFilePath(dir_name, level + i, it));
 				}
+			}
+		}
+		// they are moved
+		void MoveLevelStatus(uint64_t level, std::vector<uint64_t>& old_files) {
+			std::string dir_name = DBDirName(filename);
+			for (auto& it : old_files) {
+				status[level].erase(fileno);
+				status[level + 1].insert(fileno);
 			}
 		}
 
@@ -86,12 +94,13 @@ namespace LSMKV {
 			return status[level].size();
 		}
 
-
-		bool LevelFull(uint64_t level) {
+		bool LevelOver(uint64_t level) {
 			return status[level].size() >= (1 << (level + 1));
 		}
-		void AddNewLevelStatus(uint64_t level, uint64_t file_no) {
-			status[level].insert(file_no);
+		void AddNewLevelStatus(uint64_t level, uint64_t file_no, uint64_t size) {
+			for (uint64_t i = 0; i < size; i++) {
+				status[level].insert(file_no + i);
+			}
 		}
 
 		// Creat a New level
@@ -111,12 +120,10 @@ namespace LSMKV {
 			return max_level == level;
 		}
 
-
-		std::set<uint64_t> & GetLevelStatus(uint64_t level) {
+		std::set<uint64_t>& GetLevelStatus(uint64_t level) {
 			assert(level < status.size());
 			return status[level];
 		}
-
 
 		std::vector<std::set<uint64_t>> status;
 		std::string filename;
