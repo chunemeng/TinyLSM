@@ -90,6 +90,8 @@ namespace LSMKV {
 //			delete[] sst_meta;
 			if (compaction) {
 				SSTCompaction(level, v->fileno++, v, kc);
+			} else {
+				v->fileno++;
 			}
 			return Status::OK();
 		}
@@ -134,6 +136,7 @@ namespace LSMKV {
 			file->Close();
 			delete file;
 		}
+		return Status::OK();
 	}
 	Status MoveToNewLevel(uint64_t level, const uint64_t& timestamp, std::vector<uint64_t>& new_files, Version* v) {
 		std::string dbname = v->DBName();
@@ -151,6 +154,7 @@ namespace LSMKV {
 			file->Close();
 			delete file;
 		}
+		return Status::OK();
 	}
 
 	uint64_t FindLevels(const std::string& dbname, Version* v) {

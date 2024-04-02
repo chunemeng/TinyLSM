@@ -294,6 +294,7 @@ namespace LSMKV {
 					cache.emplace(timestamp, iterator);
 				}
 			}
+			table_cache = nullptr;
 		}
 
 		void reset() {
