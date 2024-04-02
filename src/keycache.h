@@ -75,7 +75,6 @@ namespace LSMKV {
 			// NEED LEVEL-N AND LEVEL-N+1 FILE_NOS
 			// TODO CHANGE TO UNORDERED_MAP(?)
 
-			// I CAN'T READ this GARBANY MORE !!!!!!
 			std::multimap<uint64_t, std::multimap<uint64_t, TableIterator*>::iterator> choose_this_level;
 			auto choose_it = choose_this_level.begin();
 			std::pair<uint64_t, TableIterator*> it;
@@ -217,8 +216,9 @@ namespace LSMKV {
 							} else {
 								old_file_nos[1].emplace_back(it);
 							}
-							wait_to_merge.erase(index);
 							delete (*index);
+							// if erase first, the iterator will invalid
+							wait_to_merge.erase(index);
 						}
 					}
 					need_to_next.clear();
@@ -229,6 +229,7 @@ namespace LSMKV {
 				EncodeFixed64(tmp + 8, 408);
 				memcpy(tmp + 16, tmp + 8224, 8);
 				EncodeFixed64(tmp + 24, wait_insert_key);
+				// todo bug when use emplace_back
 				need_to_write.emplace_back(tmp_slice);
 				auto iterator = new TableIterator(table_cache);
 				iterator->setTimestamp(timestamp);
@@ -280,8 +281,8 @@ namespace LSMKV {
 								} else {
 									old_file_nos[1].emplace_back(it);
 								}
-								wait_to_merge.erase(index);
 								delete (*index);
+								wait_to_merge.erase(index);
 							}
 						}
 						need_to_next.clear();

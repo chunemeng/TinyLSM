@@ -19,6 +19,14 @@ set(CMAKE_CXX_STANDARD 20)
 #
 #include(GoogleTest)
 #gtest_discover_tests(SRC_TEST)
+add_custom_target(clear
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/data
+        COMMENT "Cleaning up..."
+)
+
+set_target_properties(clear PROPERTIES
+        ADDITIONAL_MAKE_CLEAN_FILES "${CMAKE_BINARY_DIR}/CMakeFiles"
+)
 set(SRC_FILES
         kvstore.cc
         kvstore.h
@@ -55,3 +63,4 @@ add_executable(TEST lsm_test.cpp ${SRC_FILES})
 
 add_executable(LSMKVC correctness.cc test.h ${SRC_FILES})
 add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})
+
