@@ -117,14 +117,12 @@ namespace LSMKV {
 		v->AddNewLevelStatus(level + 1, v->fileno - need_to_write.size(), need_to_write.size());
         // remove old sst
         v->ClearLevelStatus(level, old_files);
+        v->timestamp = timestamp;
 		// PASS THE COMPACTION
 		if (v->LevelOver(level + 1)) {
 			SSTCompaction(level + 1, v->fileno, v, kc);
 		}
 		return Status::OK();
-	}
-	void WriteBloomSlice() {
-
 	}
 	Status WriteSlice(std::vector<Slice>& need_to_write, uint64_t level, Version* v) {
 		WritableFile* file;

@@ -9,6 +9,7 @@
 #include "../utils/coding.h"
 #include "../utils/filename.h"
 #include "../utils.h"
+#include <iostream>
 namespace LSMKV {
 	struct Version {
 		explicit Version(const std::string& dbname) : filename(VersionFileName(dbname)) {
@@ -107,6 +108,10 @@ namespace LSMKV {
 		void AddNewLevel() {
 			status.emplace_back();
 			max_level++;
+            std::string dir_name = LevelDirName(DBName(), max_level);
+            if (!utils::dirExists(dir_name)) {
+                utils::_mkdir(dir_name);
+            }
 		}
 
 		void ToNextLevel(uint64_t level, std::vector<uint64_t>& new_files) {
