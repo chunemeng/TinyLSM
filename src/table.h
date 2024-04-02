@@ -207,7 +207,7 @@ namespace LSMKV {
 				return _table->sst[_end - 1].first;
 			}
 			uint64_t SmallestKey() {
-				return _table->sst[_end - 1].first;
+				return _table->sst[0].first;
 			}
 
 			void setFileNo(const uint64_t& file_no) {

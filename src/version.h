@@ -95,7 +95,7 @@ namespace LSMKV {
 		}
 
 		bool LevelOver(uint64_t level) {
-			return status[level].size() >= (1 << (level + 1));
+			return status[level].size() > (1 << (level + 1));
 		}
 		void AddNewLevelStatus(uint64_t level, uint64_t file_no, uint64_t size) {
 			for (uint64_t i = 0; i < size; i++) {
