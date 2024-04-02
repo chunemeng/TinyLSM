@@ -26,7 +26,7 @@ namespace LSMKV {
 		~MemTable();
 	private:
 		friend class MemTableIterator;
-		uint32_t size;
+		uint32_t size = 0;
 		Arena arena;
 		Table table;
 		static constexpr const char* tombstone = "~DELETED~";

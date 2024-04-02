@@ -216,8 +216,6 @@ namespace LSMKV {
 			void setTimestamp(const uint64_t& timestamp) {
 				_table->timestamp = timestamp;
 			}
-			void Merge(std::map<uint64_t, TableIterator*>& compaction) {
-			}
 
 			bool InRange(const uint64_t& smallest, const uint64_t& largest) {
 				return smallest <= SmallestKey() || largest >= LargestKey();
@@ -236,7 +234,7 @@ namespace LSMKV {
 			}
 
 		private:
-			Table* const _table;
+			Table* _table;
 			// not include _end!!!!
 			uint64_t _cur;
 			uint64_t _end;

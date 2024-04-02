@@ -66,7 +66,7 @@ namespace LSMKV {
 		// 0 ok
 		// 1 JustMove
 		// 2 dont know
-		int CompactionSST(uint64_t level, uint64_t file_no,
+		uint64_t CompactionSST(uint64_t level, uint64_t file_no,
 			std::vector<uint64_t> old_file_nos[2],
 			std::vector<uint64_t>& need_to_move,
 			std::vector<Slice>& need_to_write,
@@ -112,7 +112,7 @@ namespace LSMKV {
 				}
 				return timestamp;
 			}
-			// read smallest and largest key in the this level
+			// read smallest and largest key in this level
 			uint64_t smallest_key = UINT64_MAX;
 			uint64_t largest_key = 0;
 			for (auto& cit : choose_this_level) {
@@ -221,6 +221,7 @@ namespace LSMKV {
 							delete (*index);
 						}
 					}
+					need_to_next.clear();
 				}
 				need_to_next.clear();
 				//WRITE HEADER
@@ -244,8 +245,8 @@ namespace LSMKV {
 					cache.insert({ begin->timestamp(), begin });
 				} else {
 					table_cache = new Table(file_no++);
-					char* tmp = table_cache->reserve(16384);
-					Slice tmp_slice = Slice(tmp, 16384);
+					char* tmp = table_cache->reserve(8224 + size * 20);
+					Slice tmp_slice = Slice(tmp, 8224 + size * 20);
 					uint64_t wait_insert_key = UINT64_MAX;
 					uint64_t key_timestamp = 0;
 					Slice value;
@@ -283,6 +284,7 @@ namespace LSMKV {
 								delete (*index);
 							}
 						}
+						need_to_next.clear();
 					}
 					EncodeFixed64(tmp , timestamp);
 					EncodeFixed64(tmp + 8, 408);

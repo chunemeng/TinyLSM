@@ -71,10 +71,10 @@ namespace LSMKV {
 			EncodeFixed64(key_buf + 8, meta.size);
 			EncodeFixed64(key_buf + 16, meta.smallest);
 			EncodeFixed64(key_buf + 24, meta.largest);
-			if (!compaction) {
-				CreateFilter(key_buf + 8224, meta.size, 20, key_buf + 32);
-				file->Append(Slice(key_buf, 8224 + meta.size * 20));
-			}
+
+			CreateFilter(key_buf + 8224, meta.size, 20, key_buf + 32);
+			file->Append(Slice(key_buf, 8224 + meta.size * 20));
+
 
 			kc->PushCache(key_buf, op);
 
@@ -127,11 +127,15 @@ namespace LSMKV {
 		}
 		return Status::OK();
 	}
+	void WriteBloomSlice() {
+
+	}
 	Status WriteSlice(std::vector<Slice>& need_to_write, uint64_t level, Version* v) {
 		WritableFile* file;
 		auto dbname = v->DBName();
 		for (auto& s : need_to_write) {
 			NewWritableFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
+			CreateFilter(s.data()+ 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char*>(s.data() + 32));
 			file->Append(s);
 			file->Close();
 			delete file;
