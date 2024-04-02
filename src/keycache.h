@@ -21,6 +21,9 @@ namespace LSMKV {
         const KeyCache &operator=(const KeyCache &) = delete;
 
         explicit KeyCache(const std::string &db_path, Version *v) {
+            for (int i = 0; i < 8;++i) {
+                cache.emplace(i, std::multimap<uint64_t,TableIterator*>{});
+            }
             std::vector<std::string> dirs;
             std::vector<std::string> files;
             utils::scanDirs(db_path, dirs);
@@ -54,7 +57,7 @@ namespace LSMKV {
                         continue;
                     }
                     auto it = new TableIterator(new Table(result.data(), stoll(file_name), op));
-                    cache.emplace(it->timestamp(), it);
+                    cache[dir_level].emplace(it->timestamp(), it);
 //					cache.emplace_back();
                     delete file;
                     path_name.resize(file_size);
@@ -81,7 +84,7 @@ namespace LSMKV {
             // NEED LEVEL-N AND LEVEL-N+1 FILE_NOS
             // TODO CHANGE TO UNORDERED_MAP(?)
 
-            // key is timestamp value is iterator
+            // key is timestamp, value is iterator
             std::multimap<uint64_t, std::multimap<uint64_t, TableIterator *>::iterator> choose_this_level;
             auto choose_it = choose_this_level.begin();
             std::pair<uint64_t, TableIterator *> it;
@@ -89,10 +92,19 @@ namespace LSMKV {
             TableIterator *tmp;
             uint64_t timestamp = 0;
             std::set<uint64_t> file_location;
+            // STRANGE BUG THAT CANT INSERT INTO UNORDERED_SET
+            std::set<TableIterator *> wait_to_merge;
+            // all byte size to allocate
+            uint64_t all_size = 0;
+
+            for (int i = 0; i < level - cache.size();++i) {
+                cache.emplace(i + level, std::multimap<uint64_t,TableIterator*>{});
+            }
 
             // pick sst in size
             FindCompactionNextLevel(
                     timestamp,
+                    level,
                     this_level_files,
                     size,
                     [&](auto &rit, uint64_t &size) {
@@ -115,8 +127,8 @@ namespace LSMKV {
                     tmp = cit.second->second;
                     tmp->setTimestamp(timestamp);
                     need_to_move.emplace_back(tmp->file_no());
-                    cache.erase(cit.second);
-                    cache.emplace(timestamp, tmp);
+                    cache[level].erase(cit.second);
+                    cache[level + 1].emplace(timestamp, tmp);
                 }
                 return timestamp;
             }
@@ -129,11 +141,17 @@ namespace LSMKV {
                 smallest_key = std::min(smallest_key, tmp->SmallestKey());
                 largest_key = std::max(largest_key, tmp->LargestKey());
                 file_location.emplace(tmp->file_no());
+                tmp->seekToFirst();
+                all_size += tmp->size();
+                wait_to_merge.emplace(tmp);
+                cache[level].erase(cit.second);
             }
+            choose_this_level.clear();
 
             // Read ALL Conflicted file In NextLevel
             FindCompactionNextLevel(
                     timestamp,
+                    level + 1,
                     next_level_files,
                     cache.size(),
                     [&](auto &rit, uint64_t &size) {
@@ -143,31 +161,26 @@ namespace LSMKV {
                             --size;
                         }
                     });
-            // STRANGE BUG THAT CANT INSERT INTO UNORDERED_SET
-            std::set<TableIterator *> wait_to_merge;
-            // all byte size to allocate
-            uint64_t all_size = 0;
-//            wait_to_merge.reserve(choose_this_level.size() + 1);
+
             // START ALL ITERATOR AND START STATE
             for (auto &cit: choose_this_level) {
-                tmp = (*(cit.second)).second;
                 tmp->seekToFirst();
                 all_size += tmp->size();
                 wait_to_merge.emplace(tmp);
-                cache.erase(cit.second);
+                cache[level + 1].erase(cit.second);
             }
             // START MERGE
-            Merge(file_no, all_size, timestamp, wait_to_merge, need_to_move, need_to_write, file_location,
+            Merge(file_no, all_size, level,timestamp, wait_to_merge, need_to_move, need_to_write, file_location,
                   old_file_nos);
             return timestamp;
         }
 
         template<typename function>
-        void FindCompactionNextLevel(uint64_t &timestamp, std::set<uint64_t> &this_level_files,
+        void FindCompactionNextLevel(uint64_t &timestamp, uint64_t level,std::set<uint64_t> &this_level_files,
                                      uint64_t size,
                                      function const &callback) {
             std::pair<uint64_t, TableIterator *> it;
-            for (auto rit = cache.begin(); rit != cache.end(); rit++) {
+            for (auto rit = cache[level].begin(); rit != cache[level].end(); rit++) {
                 it = *rit;
                 if (size == 0 && timestamp < it.first) {
                     break;
@@ -181,6 +194,7 @@ namespace LSMKV {
 
         void Merge(uint64_t file_no,
                    uint64_t size,
+                   uint64_t level,
                    uint64_t timestamp,
                    std::set<TableIterator *> &wait_to_merge,
                    std::vector<uint64_t> &need_to_move,
@@ -250,7 +264,7 @@ namespace LSMKV {
                 auto iterator = new TableIterator(table_cache);
                 iterator->setTimestamp(timestamp);
                 table_cache->pushCache(tmp_slice.data(),op);
-                cache.emplace(timestamp, iterator);
+                cache[level + 1].emplace(timestamp, iterator);
                 size -= 408;
                 key_offset = 8224;
             }
@@ -261,7 +275,7 @@ namespace LSMKV {
                 if (wait_to_merge.size() == 1 && begin->AtStart()) {
                     begin->setTimestamp(timestamp);
                     need_to_move.emplace_back(begin->file_no());
-                    cache.insert({begin->timestamp(), begin});
+                    cache[level + 1].emplace(begin->timestamp(), begin);
                 } else {
                     table_cache = new Table(file_no++);
                     char *tmp = table_cache->reserve(8224 + size * 20);
@@ -320,7 +334,7 @@ namespace LSMKV {
                     auto iterator = new TableIterator(table_cache);
                     iterator->setTimestamp(timestamp);
                     table_cache->pushCache(tmp_slice.data(),op);
-                    cache.emplace(timestamp, iterator);
+                    cache[level + 1].emplace(timestamp, iterator);
                 }
             }
             table_cache = nullptr;
@@ -328,9 +342,10 @@ namespace LSMKV {
 
         void reset() {
             delete table_cache;
-
-            for (auto &it: cache) {
-                delete it.second;
+            for (auto &level:cache) {
+                for (auto &it: level.second) {
+                    delete it.second;
+                }
             }
             cache.clear();
         }
@@ -344,13 +359,15 @@ namespace LSMKV {
         void scan(const uint64_t &K1, const uint64_t &K2, std::map<key_type, std::string> &key_map) {
             auto it = key_map.begin();
             TableIterator *table;
-            for (auto &table_pair: cache) {
-                table = table_pair.second;
-                table->seek(K1, K2);
-                while (table->hasNext()) {
-                    key_map.insert(std::make_pair(table->key(),
-                                                  std::string{table->value().data(), table->value().size()}));
-                    table->next();
+            for (auto &level: cache) {
+                for (auto& table_pair : level.second) {
+                    table = table_pair.second;
+                    table->seek(K1, K2);
+                    while (table->hasNext()) {
+                        key_map.insert(std::make_pair(table->key(),
+                                                      std::string{table->value().data(), table->value().size()}));
+                        table->next();
+                    }
                 }
             }
         }
@@ -359,17 +376,19 @@ namespace LSMKV {
             assert(table_cache != nullptr);
             table_cache->pushCache(tmp, op);
             auto it = new TableIterator(table_cache);
-            cache.emplace(it->timestamp(), it);
+            cache[0].emplace(it->timestamp(), it);
             table_cache = nullptr;
         }
 
         std::string get(const uint64_t &key) {
             TableIterator *table;
-            for (auto &it: std::ranges::reverse_view(cache)) {
-                table = it.second;
-                table->seek(key);
-                if (table->hasNext()) {
-                    return {table->value().data(), table->value().size()};
+            for (auto & level: cache) {
+                for (auto &it: std::ranges::reverse_view(level.second)) {
+                    table = it.second;
+                    table->seek(key);
+                    if (table->hasNext()) {
+                        return {table->value().data(), table->value().size()};
+                    }
                 }
             }
             return {};
@@ -379,8 +398,10 @@ namespace LSMKV {
             if (table_cache != nullptr) {
                 delete table_cache;
             }
-            for (auto &it: cache) {
-                delete it.second;
+            for (auto &level: cache) {
+                for (auto & it : level.second) {
+                    delete it.second;
+                }
             }
             cache.clear();
         }
@@ -391,12 +412,14 @@ namespace LSMKV {
 
         bool GetOffset(const uint64_t &key, uint64_t &offset) {
             TableIterator *table;
-            for (auto &it: std::ranges::reverse_view(cache)) {
-                table = it.second;
-                table->seek(key);
-                if (table->hasNext()) {
-                    offset = DecodeFixed64(table->value().data());
-                    return true;
+            for (auto& level: cache) {
+                for (auto &it: std::ranges::reverse_view(level.second)) {
+                    table = it.second;
+                    table->seek(key);
+                    if (table->hasNext()) {
+                        offset = DecodeFixed64(table->value().data());
+                        return true;
+                    }
                 }
             }
             return false;
@@ -406,7 +429,8 @@ namespace LSMKV {
         // key is timestamp
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
-        std::multimap<uint64_t, TableIterator *> cache;
+        // key is level , value's key is timestamp
+        std::map<uint64_t,std::multimap<uint64_t, TableIterator*>> cache;
         Table *table_cache = nullptr;
     };
 }
