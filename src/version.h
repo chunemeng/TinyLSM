@@ -19,8 +19,8 @@ namespace LSMKV {
 				NewRandomReadableFile(filename, &file);
 				Slice slice;
 				char buf[32];
-				file->Read(0, 32, &slice, buf);
-				if (slice.size() == 32) {
+				file->Read(0, 40, &slice, buf);
+				if (slice.size() == 40) {
 					fileno = DecodeFixed64(buf);
 					timestamp = DecodeFixed64(buf + 8);
 					head = DecodeFixed64(buf + 16);
@@ -52,7 +52,7 @@ namespace LSMKV {
 			EncodeFixed64(buf + 16, head);
 			EncodeFixed64(buf + 24, tail);
 			EncodeFixed64(buf + 32, max_level);
-			file->Append(Slice(buf, 32));
+			file->Append(Slice(buf, 40));
 			file->Close();
 			delete file;
 		}
@@ -77,7 +77,7 @@ namespace LSMKV {
 			std::string dir_name = DBDirName(filename);
 			for (int i = 0; i < 2; ++i) {
 				for (auto& it : old_files[i]) {
-					status[level].erase(fileno);
+					status[level + i].erase(it);
 					utils::rmfile(SSTFilePath(dir_name, level + i, it));
 				}
 			}

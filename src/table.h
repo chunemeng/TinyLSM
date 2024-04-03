@@ -24,7 +24,7 @@ namespace LSMKV {
 			uint64_t size = DecodeFixed64(tmp + 8);
 			uint64_t offset = bloom_size + 32;
 			Slice value_offset;
-			sst.reserve(size * 20);
+			sst.reserve(size);
 			char* buf;
 			if ((isFilter = option.isFilter)) {
 				buf = arena.allocate(size * 20 + bloom_size);
@@ -53,17 +53,10 @@ namespace LSMKV {
 			uint64_t offset = bloom_size + 32;
 
 			// TODO MAY NEED COMPARE!!
-            if (size > 0)
-			sst.reserve(size * 20);
+			sst.reserve(size);
 			for (uint64_t i = 0; i < size * 20; i += 20) {
-				// NO NEED TO ALLOCATE NEW MEMORY
 				sst.emplace_back(DecodeFixed64(tmp + offset + i), std::move(Slice(tmp + offset + 8 + i, 12)));
 			}
-		}
-
-		const char* StartPtr() {
-			// todo for not isFilter
-			return bloom.data();
 		}
 
 		[[nodiscard]] uint64_t GetTimestamp() const {
@@ -167,9 +160,6 @@ namespace LSMKV {
 			uint64_t size() const{
 				return _table->sst.size();
 			}
-			const char* StartPointer() {
-				return _table->StartPtr();
-			}
 			[[nodiscard]] bool hasNext() const {
 				return _end > _cur;
 			}
@@ -196,6 +186,9 @@ namespace LSMKV {
 			}
 
 			void seek(const uint64_t& K1, const uint64_t& K2) {
+                if (!InRange(K1, K2)) {
+                    _cur = _end + 1;
+                }
 				_cur = _table->BinarySearchLocation(0, _end, K1);
 				_end = _table->BinarySearchLocation(_cur, _end, K2);
 				if (_end < _table->sst.size() && _table->sst[_end].first == K2) {
@@ -206,10 +199,10 @@ namespace LSMKV {
 				_end = _table->sst.size();
 				_cur = _end - 1;
 			}
-			uint64_t LargestKey() {
-				return _table->sst[_end - 1].first;
+			uint64_t LargestKey() const{
+				return _table->sst[_table->sst.size() - 1].first;
 			}
-			uint64_t SmallestKey() {
+			uint64_t SmallestKey() const{
 				return _table->sst[0].first;
 			}
 
@@ -221,7 +214,7 @@ namespace LSMKV {
 			}
 
 			bool InRange(const uint64_t& smallest, const uint64_t& largest) {
-				return smallest <= SmallestKey() || largest >= LargestKey();
+                return std::max(smallest,SmallestKey()) <= std::min(largest, LargestKey());
 			}
 
 			void seekToFirst() {

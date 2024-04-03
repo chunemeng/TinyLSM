@@ -8,6 +8,7 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
 	  dbname(dir), vlog_path(vlog) {
 	kc = new LSMKV::KeyCache(dir,v);
+    p = new Performance(dir);
 //	cache = LSMKV::NewLRUCache(100);
 }
 
@@ -20,6 +21,7 @@ KVStore::~KVStore() {
 	if (!imm) {
 		delete imm;
 	}
+    delete p;
 	delete v;
 //	delete cache;
 	delete kc;
@@ -30,6 +32,7 @@ KVStore::~KVStore() {
  * No return values for simplicity.
  */
 void KVStore::put(uint64_t key, const std::string& s) {
+    p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
 		if (imm == nullptr) {
 			imm = mem;
@@ -42,25 +45,30 @@ void KVStore::put(uint64_t key, const std::string& s) {
 		}
 	}
 	mem->put(key, s);
+    p->EndTest("PUT");
 }
 /**
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
  */
 std::string KVStore::get(uint64_t key) {
+    p->StartTest("GET");
 	std::string s = mem->get(key);
 	if (s.empty()) {
 		//TODO NEED TO OPTIMIZE
 		if (kc->empty()) {
+            p->EndTest("GET");
 			return "";
 		}
 		s = kc->get(key);
-		if (s.empty() || mem->DELETED(s)) {
-			return "";
+		if (s.empty()) {
+            p->EndTest("GET");
+            return "";
 		}
 		LSMKV::Slice result;
 		uint32_t len = LSMKV::DecodeFixed32(s.data() + 8);
 		if (len == 0) {
+            p->EndTest("GET");
 			return "";
 		}
 		char buf[len + 15];
@@ -68,23 +76,33 @@ std::string KVStore::get(uint64_t key) {
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(s.data()), len + 15, &result, buf);
 		delete file;
-		return { result.data() + 15, result.size() - 15 };
+        p->EndTest("GET");
+        if (result.size() <= 15) {
+            return {};
+        }
+        return { result.data() + 15, result.size() - 15 };
 	}
 	if (mem->DELETED(s)) {
-		return "";
+        p->EndTest("GET");
+
+        return "";
 	}
-	return s;
+    p->EndTest("GET");
+
+    return s;
 }
 /**
  * Delete the given key-value pair if it exists.
  * Returns false iff the key is not found.
  */
 bool KVStore::del(uint64_t key) {
+    p->StartTest("DEL");
 	std::string s = get(key);
 	if (!s.empty() && !mem->DELETED(s)) {
 		put(key, "~DELETED~");
 		return true;
 	}
+    p->EndTest("DEL");
 	return false;
 }
 
@@ -110,6 +128,7 @@ void KVStore::reset() {
  * An empty string indicates not found.
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) {
+    p->StartTest("SCAN");
 	std::map<uint64_t, std::string> map;
 	kc->scan(key1, key2, map);
 	for (auto& it : map) {
@@ -134,6 +153,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 		}
 	}
 	delete iter;
+    p->EndTest("SCAN");
 }
 
 bool CheckCrc(const char* data, uint32_t len) {
@@ -145,6 +165,7 @@ bool CheckCrc(const char* data, uint32_t len) {
  * chunk_size is the _size in byte you should AT LEAST recycle.
  */
 void KVStore::gc(uint64_t chunk_size) {
+    p->StartTest("GC");
 	LSMKV::SequentialFile* file;
 	LSMKV::NewSequentialFile(vlog_path, &file);
 	file->Skip(v->tail);
@@ -163,13 +184,19 @@ void KVStore::gc(uint64_t chunk_size) {
 	char* tmp = new char[_chunk_size];
 	uint64_t new_offset = v->head;
 
+    // I FORGET TO WRITE COMMENT!
+    // NOW I DON'T KNOW HOW I DO THIS
+
 	while (current_size < chunk_size) {
+        // value_buf is the start of ceil piece of value
 		if (!value_buf.empty()) {
 			tmp = new char[vlen];
 			file->Read(vlen, &result, tmp);
 		} else {
+            // READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
 			file->Read(_chunk_size, &result, tmp);
 		}
+
 		while (current_size < chunk_size) {
 			if (!value_buf.empty()) {
 				value_buf.append(tmp, vlen);
@@ -205,14 +232,17 @@ void KVStore::gc(uint64_t chunk_size) {
 	v->tail += current_size;
 	writeLevel0Table(mem);
 	mem = new LSMKV::MemTable();
+    p->EndTest("GC");
 }
 
 int KVStore::writeLevel0Table(LSMKV::MemTable* memtable) {
+    p->StartTest("WRITE");
 	LSMKV::Iterator* iter = memtable->newIterator();
 	FileMeta meta;
 	meta.size = memtable->memoryUsage();
 	BuildTable(dbname, v, iter, meta, kc);
 	delete iter;
 	delete memtable;
+    p->EndTest("WRITE");
 	return 0;
 }

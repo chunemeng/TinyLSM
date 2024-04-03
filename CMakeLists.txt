@@ -32,6 +32,7 @@ set_target_properties(clear PROPERTIES
 set(SRC_FILES
         kvstore.cc
         kvstore.h
+        test/performance.h
         kvstore_api.h
         MurmurHash3.h
         utils.h

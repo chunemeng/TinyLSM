@@ -11,6 +11,7 @@
 #include <set>
 #include <unordered_set>
 #include <ranges>
+#include <queue>
 
 namespace LSMKV {
     class KeyCache {
@@ -21,8 +22,8 @@ namespace LSMKV {
         const KeyCache &operator=(const KeyCache &) = delete;
 
         explicit KeyCache(const std::string &db_path, Version *v) {
-            for (int i = 0; i < 8;++i) {
-                cache.emplace(i, std::multimap<uint64_t,TableIterator*>{});
+            for (int i = 0; i < 8; ++i) {
+                cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
             }
             std::vector<std::string> dirs;
             std::vector<std::string> files;
@@ -67,62 +68,86 @@ namespace LSMKV {
             delete[] raw;
         };
 
-        void ToNewLevel(std::vector<uint64_t> &file_nos) {
 
-        }
-
-        // -1 error
-        // 0 ok
-        // 1 JustMove
-        // 2 dont know
-        uint64_t CompactionSST(uint64_t level, uint64_t file_no,
+        // return timestamp to update the version
+        uint64_t CompactionSST(uint64_t level, uint64_t file_no,uint64_t size,
                                std::vector<uint64_t> old_file_nos[2],
                                std::vector<uint64_t> &need_to_move,
-                               std::vector<Slice> &need_to_write,
-                               std::set<uint64_t> &this_level_files,
-                               std::set<uint64_t> &next_level_files) {
+                               std::vector<Slice> &need_to_write
+                               ) {
             // NEED LEVEL-N AND LEVEL-N+1 FILE_NOS
             // TODO CHANGE TO UNORDERED_MAP(?)
 
             // key is timestamp, value is iterator
             std::multimap<uint64_t, std::multimap<uint64_t, TableIterator *>::iterator> choose_this_level;
+            // tmp value
             auto choose_it = choose_this_level.begin();
             std::pair<uint64_t, TableIterator *> it;
-            uint64_t size = this_level_files.size() - ((level == 0) ? 0 : (1 << (level + 1)));
+            // size of sst need to read
             TableIterator *tmp;
+            // timestamp need to update
             uint64_t timestamp = 0;
+
             std::set<uint64_t> file_location;
             // STRANGE BUG THAT CANT INSERT INTO UNORDERED_SET
             std::set<TableIterator *> wait_to_merge;
             // all byte size to allocate
-            uint64_t all_size = 0;
-
-            for (int i = 0; i < level - cache.size();++i) {
-                cache.emplace(i + level, std::multimap<uint64_t,TableIterator*>{});
+            if (level > cache.size()) {
+                size_t j = cache.size();
+                for (size_t i = j; i <= level ; ++i) {
+                    cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
+                }
             }
 
+            // store the sst with same timestamp
+            std::priority_queue<std::multimap<uint64_t, TableIterator *>::iterator, std::vector<std::multimap<uint64_t, TableIterator *>::iterator>, cmp> que;
+            bool isFull = false;
+            // iterator comparator
+            cmp cmp;
             // pick sst in size
             FindCompactionNextLevel(
-                    timestamp,
                     level,
-                    this_level_files,
-                    size,
-                    [&](auto &rit, uint64_t &size) {
+                    [&](auto &rit) {
                         it = *rit;
-                        if ((choose_it = choose_this_level.find(it.first)) != choose_this_level.end()) {
-                            tmp = (choose_it->second)->second;
-                            if (it.second->SmallestKey() < tmp->SmallestKey()
-                                || ((it.second->SmallestKey() == tmp->SmallestKey())
-                                    && (it.second->LargestKey() < tmp->LargestKey()))) {
-                                choose_it->second = rit;
+                        if (isFull) {
+                            if (timestamp < it.first) {
+                                while(!que.empty()) {
+                                    choose_this_level.emplace(timestamp, que.top());
+                                    que.pop();
+                                }
+                                return true;
+                            } else {
+                                if (cmp(rit, que.top())) {
+                                    que.pop();
+                                    que.push(rit);
+                                }
                             }
                         } else {
-                            choose_this_level.insert({it.first, rit});
-                            size--;
+                            if (size - 1 == choose_this_level.size() + que.size()) {
+                                isFull = true;
+                            }
+                            if (it.first == timestamp) {
+                                que.push(rit);
+                            } else {
+                                while (!que.empty()) {
+                                    choose_this_level.emplace(timestamp, que.top());
+                                    que.pop();
+                                }
+                                timestamp = it.first;
+                                que.push(rit);
+                            }
                         }
-                    });
+                        return false;
+                    }
+
+            );
+            while(!que.empty()) {
+                choose_this_level.emplace(timestamp, que.top());
+                que.pop();
+            }
+
             // DIRECTLY Move TO NEXT LEVEL
-            if (next_level_files.empty() && level != 0) {
+            if (cache[level + 1].empty() && level != 0) {
                 for (auto &cit: choose_this_level) {
                     tmp = cit.second->second;
                     tmp->setTimestamp(timestamp);
@@ -136,64 +161,54 @@ namespace LSMKV {
             uint64_t smallest_key = UINT64_MAX;
             uint64_t largest_key = 0;
             for (auto &cit: choose_this_level) {
-                tmp = cit.second->second;
-                timestamp = std::max(timestamp, tmp->timestamp());
+                tmp = (*(cit.second)).second;
                 smallest_key = std::min(smallest_key, tmp->SmallestKey());
                 largest_key = std::max(largest_key, tmp->LargestKey());
                 file_location.emplace(tmp->file_no());
                 tmp->seekToFirst();
-                all_size += tmp->size();
-                wait_to_merge.emplace(tmp);
+                auto t = wait_to_merge.emplace(tmp);
                 cache[level].erase(cit.second);
             }
             choose_this_level.clear();
 
             // Read ALL Conflicted file In NextLevel
             FindCompactionNextLevel(
-                    timestamp,
                     level + 1,
-                    next_level_files,
-                    cache.size(),
-                    [&](auto &rit, uint64_t &size) {
+                    [&](auto &rit) {
                         it = *rit;
                         if (it.second->InRange(smallest_key, largest_key)) {
-                            choose_this_level.insert({(*rit).first, rit});
-                            --size;
+                            timestamp = std::max(it.first, timestamp);
+                            choose_this_level.emplace((*rit).first, rit);
                         }
+                        return false;
                     });
 
             // START ALL ITERATOR AND START STATE
             for (auto &cit: choose_this_level) {
+                tmp = (*(cit.second)).second;
                 tmp->seekToFirst();
-                all_size += tmp->size();
-                wait_to_merge.emplace(tmp);
+                auto t = wait_to_merge.emplace(tmp);
                 cache[level + 1].erase(cit.second);
             }
+
             // START MERGE
-            Merge(file_no, all_size, level,timestamp, wait_to_merge, need_to_move, need_to_write, file_location,
+            Merge(file_no, level, timestamp, wait_to_merge, need_to_move, need_to_write, file_location,
                   old_file_nos);
             return timestamp;
         }
 
         template<typename function>
-        void FindCompactionNextLevel(uint64_t &timestamp, uint64_t level,std::set<uint64_t> &this_level_files,
-                                     uint64_t size,
+        void FindCompactionNextLevel(uint64_t level,
                                      function const &callback) {
             std::pair<uint64_t, TableIterator *> it;
             for (auto rit = cache[level].begin(); rit != cache[level].end(); rit++) {
-                it = *rit;
-                if (size == 0 && timestamp < it.first) {
+                if (callback(rit)) {
                     break;
-                }
-                if (this_level_files.count(it.second->file_no())) {
-                    timestamp = std::max(it.first, timestamp);
-                    callback(rit, size);
                 }
             }
         }
 
         void Merge(uint64_t file_no,
-                   uint64_t size,
                    uint64_t level,
                    uint64_t timestamp,
                    std::set<TableIterator *> &wait_to_merge,
@@ -201,22 +216,33 @@ namespace LSMKV {
                    std::vector<Slice> &need_to_write,
                    std::set<uint64_t> &file_location,
                    std::vector<uint64_t> old_file_nos[2]) {
+            // ERROR AFTER MERGE THE SIZE MAY BE NOT SAME TO SIZE
             // file_no to generate new file
             // if the last one is full and not compaction will directly move
+            // THE OFFSET START TO WRITE (BLOOM_SIZE AND HEADER_SIZE)
             uint64_t key_offset = 8224;
+            // KEY_CACHE OPTION
+
             Option op;
+            // TableIterator need to move next
             std::vector<decltype(wait_to_merge.begin())> need_to_next;
-            while (size >= 408) {
+            while (!wait_to_merge.empty()) {
                 table_cache = new Table(file_no++);
+                // TODO FIND A GOOD WAY TO RESERVE
                 char *tmp = table_cache->reserve(16384);
-                Slice tmp_slice = Slice(tmp, 16384);
+                Slice tmp_slice;
                 uint64_t wait_insert_key = UINT64_MAX;
-                uint64_t key_timestamp = 0;
+                uint64_t key_timestamp;
                 Slice value;
-                for (int j = 0; j < 408; ++j) {
+                // CURRENT TABLE_CACHE.SIZE
+                uint64_t t_size = 0;
+                while (t_size < 408 && !wait_to_merge.empty()) {
                     wait_insert_key = UINT64_MAX;
+                    key_timestamp = 0;
                     for (auto it = wait_to_merge.begin(); it != wait_to_merge.end(); it++) {
                         auto rit = *it;
+                        // IF THE KEY IS SMALLER THAN STORED IN WAIT_INSERT_KEY
+                        // UPDATE TO THIS ONE
                         if (wait_insert_key > rit->key()) {
                             need_to_next.clear();
                             need_to_next.emplace_back(it);
@@ -227,12 +253,15 @@ namespace LSMKV {
                         }
                         if (wait_insert_key == rit->key()) {
                             need_to_next.emplace_back(it);
+                            // UPDATE VALUE IF TIMESTAMP IS NEW
+                            // second is for key == uint64_max
                             if (key_timestamp < rit->timestamp()) {
                                 key_timestamp = rit->timestamp();
                                 value = rit->value();
                             }
                         }
                     }
+                    ++t_size;
                     // WRITE KEY AND OFFSET
                     EncodeFixed64(tmp + key_offset, wait_insert_key);
                     memcpy(tmp + key_offset + 8, value.data(), value.size());
@@ -241,6 +270,7 @@ namespace LSMKV {
                         (*index)->next();
                         if (!((*index)->hasNext())) {
                             auto it = (*index)->file_no();
+                            // find the level of the file
                             if (file_location.count(it)) {
                                 old_file_nos[0].emplace_back(it);
                             } else {
@@ -255,99 +285,34 @@ namespace LSMKV {
                 }
                 need_to_next.clear();
                 //WRITE HEADER
+                // WRITE TIMESTAMP
                 EncodeFixed64(tmp, timestamp);
-                EncodeFixed64(tmp + 8, 408);
+                // WIRTE VALUE SIZE
+                EncodeFixed64(tmp + 8, t_size);
+                // WRITE MIN KEY
                 memcpy(tmp + 16, tmp + 8224, 8);
+                // WRITE MAX KEY
                 EncodeFixed64(tmp + 24, wait_insert_key);
+                tmp_slice = Slice(tmp, t_size * 20 + 8224);
                 // todo bug when use emplace_back
                 need_to_write.emplace_back(tmp_slice);
                 auto iterator = new TableIterator(table_cache);
                 iterator->setTimestamp(timestamp);
-                table_cache->pushCache(tmp_slice.data(),op);
+                table_cache->pushCache(tmp_slice.data(), op);
                 cache[level + 1].emplace(timestamp, iterator);
-                size -= 408;
                 key_offset = 8224;
-            }
-            // AFTER FIND LARGEST TIMESTAMP THEN UPDATE
-            if (size > 0) {
-                // Can Move Now
-                auto begin = (*(wait_to_merge.begin()));
-                if (wait_to_merge.size() == 1 && begin->AtStart()) {
-                    begin->setTimestamp(timestamp);
-                    need_to_move.emplace_back(begin->file_no());
-                    cache[level + 1].emplace(begin->timestamp(), begin);
-                } else {
-                    table_cache = new Table(file_no++);
-                    char *tmp = table_cache->reserve(8224 + size * 20);
-                    Slice tmp_slice = Slice(tmp, 8224 + size * 20);
-                    uint64_t wait_insert_key = UINT64_MAX;
-                    uint64_t key_timestamp = 0;
-                    Slice value;
-                    for (int j = 0; j < size; ++j) {
-                        wait_insert_key = UINT64_MAX;
-                        for (auto it = wait_to_merge.begin(); it != wait_to_merge.end(); it++) {
-                            auto rit = *it;
-                            if (wait_insert_key > rit->key()) {
-                                need_to_next.clear();
-                                need_to_next.emplace_back(it);
-                                key_timestamp = rit->timestamp();
-                                value = rit->value();
-                                wait_insert_key = rit->key();
-                                continue;
-                            }
-                            if (wait_insert_key == rit->key()) {
-                                need_to_next.emplace_back(it);
-                                if (key_timestamp < rit->timestamp()) {
-                                    key_timestamp = rit->timestamp();
-                                    value = rit->value();
-                                }
-                            }
-                        }
-                        // WRITE KEY AND OFFSET
-                        EncodeFixed64(tmp + key_offset, wait_insert_key);
-                        memcpy(tmp + key_offset + 8, value.data(), value.size());
-                        key_offset = key_offset + 20;
-                        for (auto &index: need_to_next) {
-                            (*index)->next();
-                            if (!((*index)->hasNext())) {
-                                auto it = (*index)->file_no();
-                                if (file_location.count(it)) {
-                                    old_file_nos[0].emplace_back(it);
-                                } else {
-                                    old_file_nos[1].emplace_back(it);
-                                }
-                                delete (*index);
-                                // if erase first, the iterator will invalid
-                                wait_to_merge.erase(index);
-                            }
-                        }
-                        need_to_next.clear();
-                    }
-                    need_to_next.clear();
-                    //WRITE HEADER
-                    EncodeFixed64(tmp, timestamp);
-                    EncodeFixed64(tmp + 8, 408);
-                    memcpy(tmp + 16, tmp + 8224, 8);
-                    EncodeFixed64(tmp + 24, wait_insert_key);
-                    // todo bug when use emplace_back
-                    need_to_write.emplace_back(tmp_slice);
-                    auto iterator = new TableIterator(table_cache);
-                    iterator->setTimestamp(timestamp);
-                    table_cache->pushCache(tmp_slice.data(),op);
-                    cache[level + 1].emplace(timestamp, iterator);
-                }
             }
             table_cache = nullptr;
         }
 
         void reset() {
             delete table_cache;
-            for (auto &level:cache) {
+            for (auto &level: cache) {
                 for (auto &it: level.second) {
                     delete it.second;
                 }
+                level.second.clear();
             }
-            cache.clear();
         }
 
         char *ReserveCache(size_t size, const uint64_t &file_no) {
@@ -360,7 +325,7 @@ namespace LSMKV {
             auto it = key_map.begin();
             TableIterator *table;
             for (auto &level: cache) {
-                for (auto& table_pair : level.second) {
+                for (auto &table_pair: level.second) {
                     table = table_pair.second;
                     table->seek(K1, K2);
                     while (table->hasNext()) {
@@ -382,7 +347,7 @@ namespace LSMKV {
 
         std::string get(const uint64_t &key) {
             TableIterator *table;
-            for (auto & level: cache) {
+            for (auto &level: cache) {
                 for (auto &it: std::ranges::reverse_view(level.second)) {
                     table = it.second;
                     table->seek(key);
@@ -399,7 +364,7 @@ namespace LSMKV {
                 delete table_cache;
             }
             for (auto &level: cache) {
-                for (auto & it : level.second) {
+                for (auto &it: level.second) {
                     delete it.second;
                 }
             }
@@ -412,7 +377,7 @@ namespace LSMKV {
 
         bool GetOffset(const uint64_t &key, uint64_t &offset) {
             TableIterator *table;
-            for (auto& level: cache) {
+            for (auto &level: cache) {
                 for (auto &it: std::ranges::reverse_view(level.second)) {
                     table = it.second;
                     table->seek(key);
@@ -430,8 +395,18 @@ namespace LSMKV {
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
         // key is level , value's key is timestamp
-        std::map<uint64_t,std::multimap<uint64_t, TableIterator*>> cache;
+
+        std::map<uint64_t, std::multimap<uint64_t, TableIterator *>> cache;
         Table *table_cache = nullptr;
+
+        // the comparator of TableIterator*
+        struct cmp {
+            bool operator()(const std::multimap<uint64_t, TableIterator *>::iterator &left,
+                            const std::multimap<uint64_t, TableIterator *>::iterator &right) {
+                return left->second->SmallestKey() < right->second->SmallestKey();
+            }
+
+        };
     };
 }
 
