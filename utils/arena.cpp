@@ -20,7 +20,7 @@ namespace LSMKV {
 	}
 
 	char* Arena::allocateNewBlock(size_t bytes) {
-		char* result = (char*)malloc(bytes);
+		char* result = new char[bytes];
 		pool.push_back(result);
 		return result;
 	}

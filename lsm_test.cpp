@@ -10,13 +10,25 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
     if (argc == 2 && strcmp(argv[1],"-p") == 0) {
-        for (int i = 0; i < 100000;++i) {
-            if ((i&1) && !(p->get(i)=="s")) {
-                auto k = p->get(i);
-                std::cout<<i<<std::endl;
+//        LSMKV::WritableFile *file;
+//        LSMKV::NewWriteAtStartFile("./data/.current",&file);
+//        file->Append(LSMKV::Slice("Hello World!Hello World!Hello World!Hello World!Hello World!",40));
+//        file->Close();
+//        delete file;
+//
+//        utils::de_alloc_file("./data/.current",3,7);
+//        delete p;
+        p->reset();
+        for (int i = 0; i < 1000;++i) {
+            p->put(i,"s");
+        }
+        p->gc(1024);
+//        delete p;
+        for (int i = 0; i < 1000;++i) {
+            if (p->get(i) != "s") {
+                int f = 7;
             }
         }
-        delete p;
         return  0;
     }
 	std::string s = "s";
@@ -32,12 +44,12 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < 100000; i++) {
 		p->put(i,s);
 	}
+    for (int i = 0; i < 100000; i++) {
+        p->get(i);
+    }
 	for (int i = 0; i < 100000; i+=2) {
 		auto f = p->del(i);
 
-        if (i > 2448 && !p->get(2448).empty() || i > 5304 && !p->get(5304).empty() || i > 1632 && !p->get(1632).empty()) {
-            int h = 8;
-        }
 	}
 	for (int i = 0; i < 100000; i++) {
 		if (!(i & 1) && !p->get(i).empty()) {

@@ -169,7 +169,8 @@ int main(int argc, char *argv[])
 
 	if (signal(SIGUSR1, sigusr1Handler) == SIG_ERR)
 	{
-		perror("signalhandler");
+		perror("signalhand"
+               "ler");
 		return -1;
 	}
 

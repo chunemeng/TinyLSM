@@ -7,6 +7,7 @@
 #include "../utils/bloomfilter.h"
 #include <map>
 #include <unordered_set>
+#include <iostream>
 namespace LSMKV {
 	//instance of sst
 	static constexpr uint64_t bloom_size = 8192;
@@ -18,11 +19,10 @@ namespace LSMKV {
 			return arena.allocate(size);
 		}
 		explicit Table(const char* tmp, const uint64_t& file_no, Option option) {
-
 			timestamp = DecodeFixed64(tmp);
 			this->file_no = file_no;
 			uint64_t size = DecodeFixed64(tmp + 8);
-			uint64_t offset = bloom_size + 32;
+			uint64_t offset = bloom_size;
 			Slice value_offset;
 			sst.reserve(size);
 			char* buf;
@@ -33,15 +33,20 @@ namespace LSMKV {
 			}
 			bloom = Slice(buf, 8192);
 
+            // NO NEED TO COPY HEADER
+            // IF OPEN FILTER COPY IT
 			memcpy(buf, tmp + 32 + !isFilter * 8192, (isFilter ? 8192 : 0) + size * 20);
 
 			// TODO MAY NEED COMPARE!!
 
-//			memcpy(buf, tmp + 8224, size * 20);
-			for (uint64_t i = 0; i < size * 20; i += 20) {
-				value_offset = Slice(tmp + offset + 8 + i, 12);
-				sst.emplace_back(DecodeFixed64(tmp + offset + i), value_offset);
+            for (uint64_t i = 0; i < size * 20; i += 20) {
+				value_offset = Slice(buf + offset + 8 + i, 12);
+                sst.emplace_back(DecodeFixed64(buf + offset + i), value_offset);
 			}
+            if (file_no == 3623 || file_no == 3624) {
+                std::cout<<(void*)(sst[0].second.data() + 8224)<<std::endl;
+                std::cout<<(void*)tmp<<std::endl;
+            }
 		}
 
 		void pushCache(const char* tmp, const Option& op) {
@@ -55,6 +60,7 @@ namespace LSMKV {
 			// TODO MAY NEED COMPARE!!
 			sst.reserve(size);
 			for (uint64_t i = 0; i < size * 20; i += 20) {
+                auto b = DecodeFixed32(tmp + offset + 8 + i + 8);
 				sst.emplace_back(DecodeFixed64(tmp + offset + i), std::move(Slice(tmp + offset + 8 + i, 12)));
 			}
 		}
@@ -85,7 +91,7 @@ namespace LSMKV {
 			if (!KeyMatch(key)) {
 				return "";
 			}
-			uint64_t offset = BinarySearchGet(0, sst.size(), key);
+			uint64_t offset = BinarySearchGet(key);
 			if (offset >= sst.size()) {
 				return "";
 			} else {
@@ -93,7 +99,7 @@ namespace LSMKV {
 			}
 		}
 	private:
-		[[nodiscard]] uint64_t BinarySearchGet(const uint64_t& start, const uint64_t& end, const uint64_t& key) const {
+		[[nodiscard]] uint64_t BinarySearchGet(const uint64_t& key) const {
 			// TODO 斐波那契分割优化(?)
 			// NOT INCLUDE END
 			uint64_t left = 0, right = sst.size(), mid;
@@ -131,7 +137,7 @@ namespace LSMKV {
 			const uint64_t& key) const {
 			// TODO 斐波那契分割优化(?)
 			// NOT INCLUDE END
-			uint64_t left = 0, right = sst.size(), mid;
+			uint64_t left = start, right = end, mid;
 			while (left < right) {
 				mid = left + ((right - left) >> 1);
 				if (sst[mid].first < key)
@@ -181,7 +187,7 @@ namespace LSMKV {
 					_cur = 1;
 					return;
 				}
-				_cur = _table->BinarySearchGet(0, _end, key);
+				_cur = _table->BinarySearchGet(key);
 				_end = _table->sst.size();
 			}
 
@@ -189,6 +195,7 @@ namespace LSMKV {
                 if (!InRange(K1, K2)) {
                     _cur = _end + 1;
                 }
+                _end = _table->sst.size();
 				_cur = _table->BinarySearchLocation(0, _end, K1);
 				_end = _table->BinarySearchLocation(_cur, _end, K2);
 				if (_end < _table->sst.size() && _table->sst[_end].first == K2) {

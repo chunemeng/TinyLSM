@@ -2,12 +2,12 @@
 #include "src/builder.h"
 #include <string>
 #include <iostream>
-#include <zlib.h>
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), mem(new LSMKV::MemTable()), v(new LSMKV::Version(dir)),
 	  dbname(dir), vlog_path(vlog) {
 	kc = new LSMKV::KeyCache(dir,v);
+//    kc->LogLevel(0,0);
     p = new Performance(dir);
 //	cache = LSMKV::NewLRUCache(100);
 }
@@ -71,6 +71,10 @@ std::string KVStore::get(uint64_t key) {
             p->EndTest("GET");
 			return "";
 		}
+        if (len > 100000 ) {
+            int b= 5;
+            return {};
+        }
 		char buf[len + 15];
 		LSMKV::RandomReadableFile* file;
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
@@ -168,7 +172,7 @@ void KVStore::gc(uint64_t chunk_size) {
     p->StartTest("GC");
 	LSMKV::SequentialFile* file;
 	LSMKV::NewSequentialFile(vlog_path, &file);
-	file->Skip(v->tail);
+	file->MoveTo(v->tail);
 	// TODO NOT OVERFLOW
 	LSMKV::Slice result, value;
 
@@ -199,39 +203,52 @@ void KVStore::gc(uint64_t chunk_size) {
 
 		while (current_size < chunk_size) {
 			if (!value_buf.empty()) {
+                // APPEND THE NEXT PART OF CEIL PIECE
 				value_buf.append(tmp, vlen);
 				ptr = &value_buf[0];
-				len = vlen;
+				len = value_buf.size() - 15;
 				key = LSMKV::DecodeFixed32(&value_buf[3]);
 			} else {
+                // CURRENT PTR IN TMP
 				ptr = current_size + tmp;
-				len = LSMKV::DecodeFixed32(ptr + 11);
-				key = LSMKV::DecodeFixed32(ptr + 3);
 
-				// NOT FETCH ALL BYTES
+                // TODO WHEN FACTOR == 1 , COULDN'T READ THE LEN
+                // THE LEN OF VALUE
+				len = LSMKV::DecodeFixed32(ptr + 11);
+				// THE KEY OF VALUE
+                key = LSMKV::DecodeFixed32(ptr + 3);
+
+				// CANT FETCH ALL BYTES IN _CHUNK_SIZE
 				if (len + current_size + 15 > _chunk_size) {
-					vlen = len + current_size + 15 > _chunk_size;
-					value_buf.append(ptr, len + 15);
+                    // vlen is the remaining part length
+					vlen = len + current_size + 15 - _chunk_size;
+                    // STORE THE FIRST PART OF CEIL PIECE
+					value_buf.append(ptr, len + 15 - vlen);
 					break;
 				}
-
 			}
-			if (CheckCrc(ptr, len + 12) && kc->GetOffset(key, offset) && offset == v->tail + current_size) {
+            // DO CRC CHECK AND CHECK WHERE IT IS THE NEWEST VALUE
+			if (CheckCrc(ptr, len + 12) && kc->GetOffset(key, offset) && (offset == v->tail + current_size)) {
 				value = LSMKV::Slice(ptr + 15, len);
-//				cache->Insert(new_offset, value);
+                //cache->Insert(new_offset, value);
 				mem->put(key, value);
+                // MAYBE USE TO BUILD THE VALUE_CACHE
 				new_offset += len + 15;
-			}
-			current_size += len + 15;
-		}
+			} else {
+                int bf = 7;
+            }
+            current_size += len + 15;
+        }
 		delete[] tmp;
 	}
 
-
 	utils::de_alloc_file(vlog_path, v->tail, current_size);
-	v->tail += current_size;
-	writeLevel0Table(mem);
-	mem = new LSMKV::MemTable();
+
+    v->tail += current_size;
+    if (mem->memoryUsage() != 0) {
+        writeLevel0Table(mem);
+        mem = new LSMKV::MemTable();
+    }
     p->EndTest("GC");
 }
 

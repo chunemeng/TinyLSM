@@ -215,11 +215,12 @@ namespace utils {
  	* @return generated crc16.
  	*/
 	static inline uint16_t crc16(const char* data, size_t length) {
-		static const std::unique_ptr<uint16_t[]> crc16_table = generate_crc16_table();
+        const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(data);
+        static const std::unique_ptr<uint16_t[]> crc16_table = generate_crc16_table();
 		uint16_t crc = 0xFFFF;
 		size_t i = 0;
 		while (i < length) {
-			crc = (crc << 8) ^ crc16_table[((crc >> 8) ^ data[i++]) & 0xFF];
+			crc = (crc << 8) ^ crc16_table[((crc >> 8) ^ buffer[i++]) & 0xFF];
 		}
 		return crc;
 	}
@@ -249,6 +250,7 @@ namespace utils {
 				}
 			}
 		}
+        delete file;
 		// After find a page and not found
 		assert(false);
 		return tail;

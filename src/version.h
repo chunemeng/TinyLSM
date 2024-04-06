@@ -27,15 +27,11 @@ namespace LSMKV {
 					tail = DecodeFixed64(buf + 24);
 					max_level = DecodeFixed64(buf + 32);
 				}
+                delete file;
 			} else {
 				WriteToFile();
 			}
-			// IF ONLY ADD TWO NEW LEVEL WILL NOT REVERSE
-			status.reserve(max_level + 3);
-			for (uint64_t i = 0; i <= max_level; i++) {
-				// TODO MAYBE OVERFLOW (?)
-				status.emplace_back();
-			}
+            EmplaceStatus();
 		}
 
 		~Version() {
@@ -57,13 +53,25 @@ namespace LSMKV {
 			delete file;
 		}
 
+        void EmplaceStatus() {
+            // IF ONLY ADD TWO NEW LEVEL WILL NOT REVERSE
+            max_level = max_level % 1000;
+            status.reserve(max_level + 3);
+            for (uint64_t i = 0; i <= max_level; i++) {
+                // TODO MAYBE OVERFLOW (?)
+                status.emplace_back();
+            }
+        }
+
 		void reset() {
 			fileno = 0;
 			timestamp = 0;
 			head = 0;
 			tail = 0;
 			max_level = 7;
+            status.clear();
 			WriteToFile();
+            EmplaceStatus();
 		}
 		std::string DBName() const {
 			return Dirname(filename);
@@ -84,10 +92,9 @@ namespace LSMKV {
 		}
 		// they are moved
 		void MoveLevelStatus(uint64_t level, std::vector<uint64_t>& old_files) {
-			std::string dir_name = DBDirName(filename);
 			for (auto& it : old_files) {
-				status[level].erase(fileno);
-				status[level + 1].insert(fileno);
+				status[level].erase(it);
+				status[level + 1].insert(it);
 			}
 		}
 

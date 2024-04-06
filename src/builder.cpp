@@ -12,10 +12,9 @@ namespace LSMKV {
     Status BuildTable(const std::string &dbname, Version *v, Iterator *iter, FileMeta &meta, KeyCache *kc) {
         //	meta->file_size = 0;
         iter->seekToFirst();
-
         std::string vlog_buf;
 //		key_buf.reserve(1024 * 8);
-        auto vLogBuilder = new VLogBuilder();\
+        auto vLogBuilder = new VLogBuilder();
         char *key_buf;
         uint64_t value_size = 0, key_offset;
         uint64_t level = FindLevels(dbname, v);
@@ -86,6 +85,7 @@ namespace LSMKV {
             delete vLogBuilder;
 //			delete[] sst_meta;
             v->fileno++;
+//            kc->LogLevel(0, 5);
             if (compaction) {
                 SSTCompaction(level, v->fileno, v, kc);
             }
@@ -130,7 +130,7 @@ namespace LSMKV {
         auto dbname = v->DBName();
         for (auto &s: need_to_write) {
             NewWritableFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
-            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data() + 32));
+            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data())+ 32);
             file->Append(s);
             file->Close();
             delete file;

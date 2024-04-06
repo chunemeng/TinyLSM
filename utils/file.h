@@ -106,6 +106,14 @@ namespace LSMKV {
 			return status;
 		}
 
+        Status MoveTo(uint64_t n) {
+            if (::lseek(fd_, n, SEEK_SET) == static_cast<off_t>(-1)) {
+                return Status::IOError(filename_);
+            }
+            return Status::OK();
+        }
+
+
 		Status Skip(uint64_t n) {
 			if (::lseek(fd_, n, SEEK_CUR) == static_cast<off_t>(-1)) {
 				return Status::IOError(filename_);
@@ -329,7 +337,7 @@ namespace LSMKV {
 		WritableFile** result) {
 		int fd = ::open(filename.c_str(),
 			O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
-		::lseek(fd, 0, SEEK_END);
+		::lseek(fd, 0, SEEK_SET);
 		if (fd < 0) {
 			*result = nullptr;
 			return Status::IOError(filename);
