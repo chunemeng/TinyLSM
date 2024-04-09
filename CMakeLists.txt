@@ -64,5 +64,6 @@ set(SRC_FILES
 )
 add_executable(TEST lsm_test.cpp ${SRC_FILES})
 
-add_executable(LSMKVC correctness.cc test.h ${SRC_FILES})
+add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
+        )
 add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})

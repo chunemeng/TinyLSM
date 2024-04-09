@@ -14,7 +14,7 @@ namespace LSMKV {
 	public:
 		typedef Skiplist<uint64_t, Slice> Table;
 
-		explicit MemTable(const std::function<int(void)>& callback);
+		explicit MemTable();
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		void put(key_type key, const Slice& val);
@@ -33,8 +33,6 @@ namespace LSMKV {
 		Table table;
 		static constexpr const char* tombstone = "~DELETED~";
 		Arena arena;
-		// todo convert to function ptr
-		std::function<int(void)> callback;
 	};
 }
 

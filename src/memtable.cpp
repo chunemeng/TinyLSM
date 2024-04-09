@@ -45,7 +45,7 @@ namespace LSMKV {
 			return _iter.key();
 		}
 		Slice value() const override {
-			return _iter.value() ;
+			return _iter.value();
 		}
 
 	private:
@@ -69,7 +69,7 @@ namespace LSMKV {
 		}
 		return "";
 	}
-	MemTable::MemTable(const std::function<int(void)>& callback) : table(&arena), size(0),callback(callback) {
+	MemTable::MemTable() : table(&arena), size(0) {
 	}
 
 	bool MemTable::del(key_type key) {
@@ -86,9 +86,6 @@ namespace LSMKV {
 	}
 
 	MemTable::~MemTable() {
-		if (callback.operator bool()) {
-			callback();
-		}
 	}
 
 	// NEED TO STORE VALUE
@@ -108,7 +105,7 @@ namespace LSMKV {
 		return s == tombstone;
 	}
 
-    bool MemTable::contains(uint64_t key) {
-        return table.contains(key);
-    }
+	bool MemTable::contains(uint64_t key) {
+		return table.contains(key);
+	}
 }

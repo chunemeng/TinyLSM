@@ -6,15 +6,13 @@
 
 int KVStore::writeLevel0(KVStore* kvStore) {
 	std::unique_ptr<LSMKV::MemTable> imm;
-	imm = std::move(kvStore->mem);
+	imm.reset(kvStore->mem.release());
 	return kvStore->writeLevel0Table(imm.get());
 }
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
-	: KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)),
-	  dbname(dir), vlog_path(vlog) {
-	callback = [this] { return KVStore::writeLevel0(this); };
-	mem = std::make_unique<LSMKV::MemTable>(callback);
+	: KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog),
+	  deleter(std::move(callback)), mem(nullptr, deleter) {
 	kc = new LSMKV::KeyCache(dir, v);
 	p = new Performance(dir);
 //	cache = LSMKV::NewLRUCache(100);
@@ -31,13 +29,14 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
 		if (imm == nullptr) {
-			imm = std::move(mem);
-			mem = std::make_unique<LSMKV::MemTable>(callback);
+			imm.reset(mem.release());
 			writeLevel0Table(imm.get());
 			imm = nullptr;
 		} else {
-			writeLevel0Table(mem.get());
-			mem = std::make_unique<LSMKV::MemTable>(callback);
+			auto ptr = mem.release();
+			writeLevel0Table(ptr);
+			delete ptr;
+			mem.reset(new LSMKV::MemTable());
 		}
 	}
 	mem->put(key, s);
@@ -52,15 +51,15 @@ void KVStore::put(uint64_t key, const std::string& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
 		if (imm == nullptr) {
-			imm = std::move(mem);
-			mem = std::make_unique<LSMKV::MemTable>(callback);
+			imm.reset(mem.release());
+			mem.reset(new LSMKV::MemTable());
 			writeLevel0Table(imm.get());
 			imm = nullptr;
 		} else {
 			auto ptr = mem.release();
 			writeLevel0Table(ptr);
 			delete ptr;
-			mem = std::make_unique<LSMKV::MemTable>(callback);
+			mem.reset(new LSMKV::MemTable());
 		}
 	}
 	mem->put(key, s);
@@ -97,9 +96,6 @@ std::string KVStore::get(uint64_t key) {
 		file->Read(LSMKV::DecodeFixed64(s.data()), len + 15, &result, buf);
 		delete file;
 		p->EndTest("GET");
-		if (result.data()[15] != 's') {
-			int b = 4;
-		}
 		if (result.size() <= 15) {
 			return {};
 		}
@@ -136,14 +132,14 @@ bool KVStore::del(uint64_t key) {
  */
 void KVStore::reset() {
 	imm = nullptr;
-	mem = nullptr;
+	delete mem.release();
 
 	// Otherwise it will destructor twice!!!
 	imm = nullptr;
 	utils::rmfiles(dbname);
 	v->reset();
 	kc->reset();
-	mem = std::make_unique<LSMKV::MemTable>(callback);
+	mem.reset(new LSMKV::MemTable());
 }
 
 /**
@@ -279,7 +275,7 @@ void KVStore::gc(uint64_t chunk_size) {
 	if (mem->memoryUsage() != 0) {
 		auto m = mem.release();
 		writeLevel0Table(m);
-		mem = std::make_unique<LSMKV::MemTable>(callback);
+		mem.reset(new LSMKV::MemTable());
 	}
 	p->EndTest("GC");
 }

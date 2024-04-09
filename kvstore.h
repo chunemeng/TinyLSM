@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "kvstore_api.h"
 #include "src/memtable.h"
 #include "src/version.h"
@@ -12,15 +14,27 @@
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
-	std::unique_ptr<LSMKV::MemTable> mem;
-	std::unique_ptr<LSMKV::MemTable> imm;
+	struct Deleter{
+		void operator()(LSMKV::MemTable* memtable) const {
+			if (memtable->memoryUsage() != 0) {
+				callback();
+			}
+			delete memtable;
+		}
+		Deleter(std::function<int(void)>&& callback):callback(std::move(callback)){}
+		std::function<int(void)> callback;
+	};
 	LSMKV::Version* v;
 	std::string dbname;
 	std::string vlog_path;
 	LSMKV::KeyCache* kc;
 	LSMKV::Cache* cache;
 	Performance* p;
-	std::function<int(void)> callback;
+	std::function<int(void)> callback= [this] {return KVStore::writeLevel0(this); };
+	Deleter deleter;
+	std::unique_ptr<LSMKV::MemTable,Deleter> mem;
+	std::unique_ptr<LSMKV::MemTable> imm;
+
 
 	static int writeLevel0(KVStore *kvStore);
 
