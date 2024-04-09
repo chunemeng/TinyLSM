@@ -88,7 +88,7 @@ namespace LSMKV {
 //		}
 		byte random_level(){
 			// Twice faster than upper
-			return MAX_LEVEL - std::bit_width((uint32_t)(((1 << (MAX_LEVEL - 1)) - 1) & gen()));
+			return MAX_LEVEL - std::__bit_width((uint32_t)(((1 << (MAX_LEVEL - 1)) - 1) & rand()));
 		}
 
 		inline byte getMaxHeight() const {
@@ -101,7 +101,8 @@ namespace LSMKV {
 		Arena* arena;
 		std::atomic<byte> max_level;
 		node* _head;
-		std::mt19937 gen;
+		// todo remove this
+		// it is 2504bytes monster
 	public:
 		class Iterator {
 		public:
@@ -140,8 +141,7 @@ namespace LSMKV {
 		};
 		explicit Skiplist(Arena* arena)
 			: arena(arena), _head(createNode(0, V(), MAX_LEVEL)), max_level(1) {
-			std::random_device rd;
-			gen = std::mt19937(rd());
+			srand(time(0));
 			for (byte level = 0; level < MAX_LEVEL; level++) {
 				_head->setnext(level, nullptr);
 			}

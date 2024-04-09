@@ -5,6 +5,7 @@
 #include "../utils/arena.h"
 #include "skiplist.h"
 #include "../utils/iterator.h"
+#include <functional>
 namespace LSMKV {
 	using key_type = uint64_t;
 	using value_type = std::string;
@@ -12,6 +13,8 @@ namespace LSMKV {
 	class MemTable {
 	public:
 		typedef Skiplist<uint64_t, Slice> Table;
+
+		explicit MemTable(const std::function<int(void)>& callback);
 		void put(key_type key, value_type&& val);
 		void put(key_type key, const value_type& val);
 		void put(key_type key, const Slice& val);
@@ -21,16 +24,17 @@ namespace LSMKV {
         bool contains(uint64_t);
 		bool DELETED(const std::string &s);
 		char* reserve(size_t key);
-		explicit MemTable();
 		Iterator* newIterator();
 		size_t memoryUsage() const;
 		~MemTable();
 	private:
 		friend class MemTableIterator;
 		uint32_t size = 0;
-		Arena arena;
 		Table table;
 		static constexpr const char* tombstone = "~DELETED~";
+		Arena arena;
+		// todo convert to function ptr
+		std::function<int(void)> callback;
 	};
 }
 

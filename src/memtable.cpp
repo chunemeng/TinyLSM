@@ -1,4 +1,5 @@
 #include <sstream>
+#include <utility>
 #include "memtable.h"
 #include "../utils/coding.h"
 
@@ -68,7 +69,7 @@ namespace LSMKV {
 		}
 		return "";
 	}
-	MemTable::MemTable() : table(&arena), size(0) {
+	MemTable::MemTable(const std::function<int(void)>& callback) : table(&arena), size(0),callback(callback) {
 	}
 
 	bool MemTable::del(key_type key) {
@@ -85,6 +86,9 @@ namespace LSMKV {
 	}
 
 	MemTable::~MemTable() {
+		if (callback.operator bool()) {
+			callback();
+		}
 	}
 
 	// NEED TO STORE VALUE
