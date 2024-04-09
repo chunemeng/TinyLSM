@@ -18,6 +18,7 @@ namespace LSMKV {
 		void put(key_type key, Slice&& val);
 		std::string get(key_type key) const;
 		bool del(key_type key);
+        bool contains(uint64_t);
 		bool DELETED(const std::string &s);
 		char* reserve(size_t key);
 		explicit MemTable();

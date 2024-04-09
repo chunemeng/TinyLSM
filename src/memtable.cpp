@@ -87,11 +87,13 @@ namespace LSMKV {
 	MemTable::~MemTable() {
 	}
 
+	// NEED TO STORE VALUE
 	void MemTable::put(key_type key, const Slice& val) {
 		char* buf = arena.allocate(val.size());
 		memcpy(buf, val.data(), val.size());
 		size += table.insert(key, Slice(buf, val.size()));
 	}
+	// NO NEED TO STORE VALUE
 	void MemTable::put(key_type key, Slice&& val) {
 		size += table.insert(key, std::move(val));
 	}
@@ -101,4 +103,8 @@ namespace LSMKV {
 	bool MemTable::DELETED(const std::string& s) {
 		return s == tombstone;
 	}
+
+    bool MemTable::contains(uint64_t key) {
+        return table.contains(key);
+    }
 }

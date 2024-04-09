@@ -146,47 +146,47 @@ private:
 
 		phase();
 
-//		for (i = 1; i < max; i += 2)
-//		{
-//			EXPECT(true, store.del(i));
-//
-//			if ((i - 1) % gc_trigger == 0) [[unlikely]]
-//			{
-//				check_gc(8 * MB);
-//			}
-//		}
-//
-//		for (i = 0; i < max; i += 2)
-//		{
-//			switch (i % 3)
-//			{
-//			case 0:
-//				EXPECT(std::string(i + 1, 'e'), store.get(i));
-//				break;
-//			case 1:
-//				EXPECT(std::string(i + 1, '2'), store.get(i));
-//				break;
-//			case 2:
-//				EXPECT(std::string(i + 1, '3'), store.get(i));
-//				break;
-//			default:
-//				assert(0);
-//			}
-//
-//			store.del(i);
-//
-//			if (((i - 1) / 2) % gc_trigger == 0) [[unlikely]]
-//			{
-//				check_gc(32 * MB);
-//			}
-//		}
-//
-//		for (i = 0; i < max; ++i)
-//		{
-//			EXPECT(not_found, store.get(i));
-//		}
-//
-//		phase();
+		for (i = 1; i < max; i += 2)
+		{
+			EXPECT(true, store.del(i));
+
+			if ((i - 1) % gc_trigger == 0) [[unlikely]]
+			{
+				check_gc(8 * MB);
+			}
+		}
+
+		for (i = 0; i < max; i += 2)
+		{
+			switch (i % 3)
+			{
+			case 0:
+				EXPECT(std::string(i + 1, 'e'), store.get(i));
+				break;
+			case 1:
+				EXPECT(std::string(i + 1, '2'), store.get(i));
+				break;
+			case 2:
+				EXPECT(std::string(i + 1, '3'), store.get(i));
+				break;
+			default:
+				assert(0);
+			}
+
+			store.del(i);
+
+			if (((i - 1) / 2) % gc_trigger == 0) [[unlikely]]
+			{
+				check_gc(32 * MB);
+			}
+		}
+
+		for (i = 0; i < max; ++i)
+		{
+			EXPECT(not_found, store.get(i));
+		}
+
+		phase();
 
 		report();
 	}

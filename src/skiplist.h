@@ -139,7 +139,7 @@ namespace LSMKV {
 			const Skiplist* _list;
 		};
 		explicit Skiplist(Arena* arena)
-			: arena(arena), _head(createNode(0, "", MAX_LEVEL)), max_level(1) {
+			: arena(arena), _head(createNode(0, V(), MAX_LEVEL)), max_level(1) {
 			std::random_device rd;
 			gen = std::mt19937(rd());
 			for (byte level = 0; level < MAX_LEVEL; level++) {
@@ -197,7 +197,7 @@ namespace LSMKV {
 		}
 
 		bool contains(const K& key) {
-			auto cur = findHelper(key, nullptr);
+			auto cur = findNode(key);
 			return cur && cur->_key == key;
 		}
 

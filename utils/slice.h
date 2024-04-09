@@ -76,7 +76,7 @@ namespace LSMKV {
 	}
 
 	inline int Slice::compare(const Slice& b) const {
-		// memcmp faster than strcmp and can cmp '\0'
+		// memcmp faster than strcmp and can CmpKey '\0'
 		const size_t min_len = (_size < b._size) ? _size : b._size;
 		int r = memcmp(_data, b._data, min_len);
 		if (r == 0) {

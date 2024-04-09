@@ -86,8 +86,9 @@ namespace LSMKV {
 			for (int i = 0; i < 2; ++i) {
 				for (auto& it : old_files[i]) {
 					status[level + i].erase(it);
-					utils::rmfile(SSTFilePath(dir_name, level + i, it));
-				}
+					auto flag = utils::rmfile(SSTFilePath(dir_name, level + i, it));
+                    assert(!flag);
+                }
 			}
 		}
 		// they are moved

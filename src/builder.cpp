@@ -18,7 +18,7 @@ namespace LSMKV {
         char *key_buf;
         uint64_t value_size = 0, key_offset;
         uint64_t level = FindLevels(dbname, v);
-        Option op;
+
         bool compaction = false;
         std::string fname = SSTFileName(LevelDirName(dbname, level), v->fileno);
         uint64_t head_offset = v->head;
@@ -72,7 +72,7 @@ namespace LSMKV {
             file->Append(Slice(key_buf, 8224 + meta.size * 20));
 
 
-            kc->PushCache(key_buf, op);
+            kc->PushCache(key_buf, Option::getInstance());
 
             // need multi thread
             vlog->Append(vLogBuilder->plain_char());

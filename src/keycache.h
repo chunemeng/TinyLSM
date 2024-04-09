@@ -40,7 +40,7 @@ namespace LSMKV {
         void Merge(uint64_t file_no,
                    uint64_t level,
                    uint64_t timestamp,
-                   std::set<TableIterator *> &wait_to_merge,
+                   std::multimap<uint64_t,TableIterator *> &wait_to_merge,
                    std::vector<Slice> &need_to_write,
                    std::set<uint64_t> &file_location,
                    std::vector<uint64_t> old_file_nos[2]);
@@ -82,12 +82,12 @@ namespace LSMKV {
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
         // key is level , value's key is timestamp
-
+        Option& op = Option::getInstance();
         std::map<uint64_t, std::multimap<uint64_t, TableIterator *>> cache;
         Table *table_cache = nullptr;
 
         // the comparator of TableIterator*
-        struct cmp {
+        struct CmpKey {
             bool operator()(const std::multimap<uint64_t, TableIterator *>::iterator &left,
                             const std::multimap<uint64_t, TableIterator *>::iterator &right) {
                 return left->second->SmallestKey() < right->second->SmallestKey();

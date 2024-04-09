@@ -18,7 +18,7 @@ namespace LSMKV {
 		char* reserve(size_t size) {
 			return arena.allocate(size);
 		}
-		explicit Table(const char* tmp, const uint64_t& file_no, Option option) {
+		explicit Table(const char* tmp, const uint64_t& file_no,const Option& option) {
 			timestamp = DecodeFixed64(tmp);
 			this->file_no = file_no;
 			uint64_t size = DecodeFixed64(tmp + 8);
@@ -26,7 +26,7 @@ namespace LSMKV {
 			Slice value_offset;
 			sst.reserve(size);
 			char* buf;
-			if ((isFilter = option.isFilter)) {
+			if ((isFilter = option.getIsFilter())) {
 				buf = arena.allocate(size * 20 + bloom_size);
 			} else {
 				buf = arena.allocate(size * 20);
@@ -43,14 +43,11 @@ namespace LSMKV {
 				value_offset = Slice(buf + offset + 8 + i, 12);
                 sst.emplace_back(DecodeFixed64(buf + offset + i), value_offset);
 			}
-            if (file_no == 3623 || file_no == 3624) {
-                std::cout<<(void*)(sst[0].second.data() + 8224)<<std::endl;
-                std::cout<<(void*)tmp<<std::endl;
-            }
+
 		}
 
 		void pushCache(const char* tmp, const Option& op) {
-			if ((isFilter = op.isFilter)) {
+			if ((isFilter = op.getIsFilter())) {
 				bloom = Slice(tmp + 32, 8192);
 			}
 			timestamp = DecodeFixed64(tmp);
