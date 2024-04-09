@@ -30,9 +30,9 @@ namespace LSMKV {
 	private:
 		friend class MemTableIterator;
 		uint32_t size = 0;
-		Table table;
+        Arena arena;
+        Table table;
 		static constexpr const char* tombstone = "~DELETED~";
-		Arena arena;
 	};
 }
 

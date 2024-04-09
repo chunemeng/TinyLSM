@@ -9,7 +9,6 @@
 #include "../utils/coding.h"
 #include "../utils/filename.h"
 #include "../utils.h"
-#include <iostream>
 namespace LSMKV {
 	struct Version {
 		explicit Version(const std::string& dbname) : filename(VersionFileName(dbname)) {
@@ -29,25 +28,25 @@ namespace LSMKV {
 				}
                 delete file;
 			} else {
-				WriteToFile();
+				WriteToFile(this);
 			}
             EmplaceStatus();
 		}
 
 		~Version() {
 			// write into current file
-			WriteToFile();
+			WriteToFile(this);
 		}
 
-		inline void WriteToFile() const {
+		static inline void WriteToFile(const Version *v) {
 			WritableFile* file;
-			NewWritableFile(filename, &file);
+			NewWritableFile(v->filename, &file);
 			char buf[40];
-			EncodeFixed64(buf, fileno);
-			EncodeFixed64(buf + 8, timestamp);
-			EncodeFixed64(buf + 16, head);
-			EncodeFixed64(buf + 24, tail);
-			EncodeFixed64(buf + 32, max_level);
+			EncodeFixed64(buf, v->fileno);
+			EncodeFixed64(buf + 8, v->timestamp);
+			EncodeFixed64(buf + 16, v->head);
+			EncodeFixed64(buf + 24, v->tail);
+			EncodeFixed64(buf + 32, v->max_level);
 			file->Append(Slice(buf, 40));
 			file->Close();
 			delete file;
@@ -70,7 +69,7 @@ namespace LSMKV {
 			tail = 0;
 			max_level = 7;
             status.clear();
-			WriteToFile();
+			WriteToFile(this);
             EmplaceStatus();
 		}
 		std::string DBName() const {
@@ -138,14 +137,15 @@ namespace LSMKV {
 			return status[level];
 		}
 
-		std::vector<std::set<uint64_t>> status;
 		std::string filename;
 		uint64_t fileno = 0;
 		uint64_t timestamp = 1;
 		uint64_t head = 0;
 		uint64_t tail = 0;
 		uint64_t max_level = 7;
-	};
+        std::vector<std::set<uint64_t>> status;
+
+    };
 }
 
 #endif //VERSION_H

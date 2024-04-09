@@ -1,4 +1,3 @@
-#include <sstream>
 #include <utility>
 #include "memtable.h"
 #include "../utils/coding.h"

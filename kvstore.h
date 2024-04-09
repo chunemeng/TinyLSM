@@ -16,6 +16,7 @@ class KVStore : public KVStoreAPI {
 private:
 	struct Deleter{
 		void operator()(LSMKV::MemTable* memtable) const {
+            std::cout<<"deleter"<<std::endl;
 			if (memtable->memoryUsage() != 0) {
 				callback();
 			}

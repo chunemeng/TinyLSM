@@ -2,7 +2,6 @@
 #include "src/builder.h"
 #include <memory>
 #include <string>
-#include <iostream>
 
 int KVStore::writeLevel0(KVStore* kvStore) {
 	std::unique_ptr<LSMKV::MemTable> imm;
@@ -12,13 +11,14 @@ int KVStore::writeLevel0(KVStore* kvStore) {
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	: KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog),
-	  deleter(std::move(callback)), mem(nullptr, deleter) {
+	  deleter(std::move(callback)), mem(new LSMKV::MemTable(), deleter) {
 	kc = new LSMKV::KeyCache(dir, v);
 	p = new Performance(dir);
 //	cache = LSMKV::NewLRUCache(100);
 }
 
 KVStore::~KVStore() {
+    delete mem.release();
 	delete p;
 	delete v;
 //	delete cache;
@@ -32,6 +32,7 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 			imm.reset(mem.release());
 			writeLevel0Table(imm.get());
 			imm = nullptr;
+            mem.reset(new LSMKV::MemTable());
 		} else {
 			auto ptr = mem.release();
 			writeLevel0Table(ptr);
@@ -269,8 +270,8 @@ void KVStore::gc(uint64_t chunk_size) {
 	}
 	assert(current_size <= INT64_MAX);
 	assert(v->tail <= INT64_MAX);
-	utils::de_alloc_file(vlog_path, v->tail, current_size);
-
+	int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
+    assert(st == 0);
 	v->tail += current_size;
 	if (mem->memoryUsage() != 0) {
 		auto m = mem.release();

@@ -89,6 +89,7 @@ namespace LSMKV {
             if (compaction) {
                 SSTCompaction(level, v->fileno, v, kc);
             }
+            Version::WriteToFile(v);
             return Status::OK();
         }
         return Status::IOError("Iter is empty");
