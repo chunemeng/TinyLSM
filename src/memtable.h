@@ -23,7 +23,8 @@ namespace LSMKV {
 		bool del(key_type key);
         bool contains(uint64_t);
 		bool DELETED(const std::string &s);
-		char* reserve(size_t key);
+        bool DELETED(const Slice &s);
+        char* reserve(size_t key);
 		Iterator* newIterator();
 		size_t memoryUsage() const;
 		~MemTable();
@@ -33,7 +34,8 @@ namespace LSMKV {
         Arena arena;
         Table table;
 		static constexpr const char* tombstone = "~DELETED~";
-	};
+
+    };
 }
 
 #endif //MEMTABLE_H

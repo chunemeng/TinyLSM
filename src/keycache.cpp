@@ -83,7 +83,7 @@ namespace LSMKV {
         std::set<uint64_t> file_location;
         // STRANGE BUG THAT CANT INSERT INTO UNORDERED_SET
         // key is level to fix bug in the same timestamp
-        std::multimap<uint64_t,TableIterator *> wait_to_merge;
+        std::multimap<uint64_t, TableIterator *> wait_to_merge;
         // add new level
         if (level > cache.size()) {
             size_t j = cache.size();
@@ -161,7 +161,7 @@ namespace LSMKV {
             largest_key = std::max(largest_key, tmp->LargestKey());
             file_location.emplace(tmp->file_no());
             tmp->seekToFirst();
-            wait_to_merge.emplace(0,tmp);
+            wait_to_merge.emplace(0, tmp);
             cache[level].erase(cit.second);
         }
         choose_this_level.clear();
@@ -182,7 +182,7 @@ namespace LSMKV {
         for (auto &cit: choose_this_level) {
             tmp = (*(cit.second)).second;
             tmp->seekToFirst();
-            auto t = wait_to_merge.emplace(1,tmp);
+            auto t = wait_to_merge.emplace(1, tmp);
             cache[level + 1].erase(cit.second);
         }
         // START MERGE
@@ -191,7 +191,8 @@ namespace LSMKV {
         return timestamp;
     }
 
-    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp, std::multimap<uint64_t,TableIterator *> &wait_to_merge,
+    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp,
+                         std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                          std::vector<Slice> &need_to_write, std::set<uint64_t> &file_location,
                          std::vector<uint64_t> *old_file_nos) {
         // ERROR AFTER MERGE THE SIZE MAY BE NOT SAME TO SIZE
@@ -316,6 +317,23 @@ namespace LSMKV {
                 while (table->hasNext()) {
                     key_map.insert(std::make_pair(table->key(),
                                                   std::string{table->value().data(), table->value().size()}));
+                    table->next();
+                }
+            }
+        }
+    }
+
+    void
+    KeyCache::scan(const uint64_t &K1, const uint64_t &K2, std::map<uint64_t, std::pair<uint64_t, uint64_t>> &key_map) {
+        auto it = key_map.begin();
+        TableIterator *table;
+        for (auto &level: cache) {
+            for (auto &table_pair: level.second) {
+                table = table_pair.second;
+                table->seek(K1, K2);
+                while (table->hasNext()) {
+                    key_map.emplace(DecodeFixed64(table->value().data()),
+                                    std::make_pair(table->key(), DecodeFixed32(table->value().data() + 8)));
                     table->next();
                 }
             }

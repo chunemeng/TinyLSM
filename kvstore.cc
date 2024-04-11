@@ -14,12 +14,14 @@ KVStore::KVStore(const std::string& dir, const std::string& vlog)
 	  deleter(std::move(callback)), mem(new LSMKV::MemTable(), deleter) {
 	kc = new LSMKV::KeyCache(dir, v);
 	p = new Performance(dir);
+    p->StartTest("TOTAL");
 //	cache = LSMKV::NewLRUCache(100);
 }
 
 KVStore::~KVStore() {
     delete mem.release();
-	delete p;
+	p->EndTest("TOTAL");
+    delete p;
 	delete v;
 //	delete cache;
 	delete kc;
@@ -67,6 +69,10 @@ void KVStore::put(uint64_t key, const std::string& s) {
 	p->EndTest("PUT");
 }
 
+static inline bool CheckCrc(const char* data, uint32_t len) {
+    return data[0] == '\377' && utils::crc16(data + 3, len - 3) == LSMKV::DecodeFixed16(data + 1);
+}
+
 /**
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
@@ -97,7 +103,7 @@ std::string KVStore::get(uint64_t key) {
 		file->Read(LSMKV::DecodeFixed64(s.data()), len + 15, &result, buf);
 		delete file;
 		p->EndTest("GET");
-		if (result.size() <= 15) {
+		if (result.size() <= 15 || !CheckCrc(result.data(), len + 15)) {
 			return {};
 		}
 		return { result.data() + 15, result.size() - 15 };
@@ -152,22 +158,25 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 	p->StartTest("SCAN");
 	std::map<uint64_t, std::string> map;
 	kc->scan(key1, key2, map);
-	for (auto& it : map) {
+    LSMKV::RandomReadableFile* file;
+    for (auto& it : map) {
 		LSMKV::Slice result;
 		uint32_t len = LSMKV::DecodeFixed32(it.second.data() + 8);
 		char buf[len + 15];
-		LSMKV::RandomReadableFile* file;
 		LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
 		file->Read(LSMKV::DecodeFixed64(it.second.data()), len + 15, &result, buf);
 		delete file;
-		it.second = std::string{ result.data() + 15, result.size() - 15 };
+        if (!CheckCrc(result.data(), len + 15)) {
+            continue;
+        }
+        result.remove_prefix(15);
+		it.second = result.toString();
 	}
 	LSMKV::Iterator* iter = mem->newIterator();
 	std::list<std::pair<uint64_t, std::string>> tmp_list;
 	iter->scan(key1, key2, tmp_list);
-	for (auto& it : tmp_list) {
-		map.insert(it);
-	}
+
+    map.insert(tmp_list.begin(),tmp_list.end());
 	for (auto& it : map) {
 		if (!mem->DELETED(it.second)) {
 			list.emplace_back(it);
@@ -177,6 +186,41 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 	p->EndTest("SCAN");
 }
 
+//void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>>& list) {
+//    p->StartTest("SCAN");
+//    std::map<uint64_t, std::string> map;
+//    std::map<uint64_t,std::pair<uint64_t,uint64_t>> tmp_map;
+//    kc->scan(key1, key2, tmp_map);
+//    LSMKV::SequentialFile *file;
+//    LSMKV::NewSequentialFile(vlog_path,&file);
+//    file->MoveTo(tmp_map.begin()->first);
+//    LSMKV::Slice result;
+//
+//    for (auto& it : tmp_map) {
+//        uint32_t len = it.second.second;
+//        char buf[len + 15];
+//        file->Read(len + 15, &result, buf);
+//        //todo do check crc here
+//        result.remove_prefix(15);
+//        map.emplace(it.second.first, result.toString());
+//    }
+//    delete file;
+//
+//    LSMKV::Iterator* iter = mem->newIterator();
+//    std::list<std::pair<uint64_t, std::string>> tmp_list;
+//    iter->scan(key1, key2, tmp_list);
+//    for (auto& it : tmp_list) {
+//        map.emplace(it);
+//    }
+//    for (auto& it : map) {
+//        if (!mem->DELETED(it.second)) {
+//            list.emplace_back(it);
+//        }
+//    }
+//    delete iter;
+//    p->EndTest("SCAN");
+//}
+
 bool KVStore::GetOffset(uint64_t key, uint64_t& offset) {
 	if (!mem->contains(key)) {
 		return kc->GetOffset(key, offset);
@@ -184,9 +228,7 @@ bool KVStore::GetOffset(uint64_t key, uint64_t& offset) {
 	return false;
 }
 
-bool CheckCrc(const char* data, uint32_t len) {
-	return data[0] == '\377' && utils::crc16(data + 3, len) == LSMKV::DecodeFixed16(data + 1);
-}
+
 
 /**
  * This reclaims space from vLog by moving valid value and discarding invalid value.
@@ -221,11 +263,13 @@ void KVStore::gc(uint64_t chunk_size) {
 			file->Read(v->tail + _chunk_size, vlen, &result, tmp);
 			assert(result.size() == vlen);
 		} else {
+            p->StartTest("read vlog");
 			// READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
 			file->Read(v->tail, _chunk_size, &result, tmp);
 			_chunk_size = result.size();
+            p->EndTest("read vlog");
 		}
-
+        p->StartTest("start find key");
 		while (current_size < chunk_size) {
 			if (!value_buf.empty()) {
 				// APPEND THE NEXT PART OF CEIL PIECE
@@ -254,7 +298,7 @@ void KVStore::gc(uint64_t chunk_size) {
 				}
 			}
 			// DO CRC CHECK AND CHECK WHERE IT IS THE NEWEST VALUE
-			if (CheckCrc(ptr, len + 12) && GetOffset(key, offset) && (offset == v->tail + current_size)) {
+			if (CheckCrc(ptr, len + 15) && GetOffset(key, offset) && (offset == v->tail + current_size)) {
 				value = LSMKV::Slice(ptr + 15, len);
 				//cache->Insert(new_offset, value);
 //                put(value, key);
@@ -268,9 +312,12 @@ void KVStore::gc(uint64_t chunk_size) {
 		delete file;
 		delete[] tmp;
 	}
-	assert(current_size <= INT64_MAX);
+    p->EndTest("start find key");
+    assert(current_size <= INT64_MAX);
 	assert(v->tail <= INT64_MAX);
+    p->StartTest("dig hole");
 	int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
+    p->EndTest("dig hole");
     assert(st == 0);
 	v->tail += current_size;
 	if (mem->memoryUsage() != 0) {

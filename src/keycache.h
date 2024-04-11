@@ -40,7 +40,7 @@ namespace LSMKV {
         void Merge(uint64_t file_no,
                    uint64_t level,
                    uint64_t timestamp,
-                   std::multimap<uint64_t,TableIterator *> &wait_to_merge,
+                   std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                    std::vector<Slice> &need_to_write,
                    std::set<uint64_t> &file_location,
                    std::vector<uint64_t> old_file_nos[2]);
@@ -50,6 +50,8 @@ namespace LSMKV {
         char *ReserveCache(size_t size, const uint64_t &file_no);
 
         void scan(const uint64_t &K1, const uint64_t &K2, std::map<key_type, std::string> &key_map);
+
+        void scan(const uint64_t &K1, const uint64_t &K2, std::map<uint64_t, std::pair<uint64_t, uint64_t>> &key_map);
 
         void PushCache(const char *tmp, const Option &op) {
             assert(table_cache != nullptr);
@@ -82,7 +84,7 @@ namespace LSMKV {
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
         // key is level , value's key is timestamp
-        Option& op = Option::getInstance();
+        Option &op = Option::getInstance();
         std::map<uint64_t, std::multimap<uint64_t, TableIterator *>> cache;
         Table *table_cache = nullptr;
 

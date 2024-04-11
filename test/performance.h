@@ -35,9 +35,11 @@ public:
     }
     ~Performance(){
         LSMKV::WritableFile *file;
+        double total = 0;
         LSMKV::NewWritableFile(dbname + "/"+ ".log",&file);
         for (auto& it:times) {
             std::string tmp = it.first+": \n" ;
+            total += it.second;
             tmp += "total: " + std::to_string(it.second) + " ms\n";
             tmp += "op   : " + std::to_string(num[it.first]) + "  \n";
             tmp += "per  : " + std::to_string(it.second/num[it.first]) + " ms\n";

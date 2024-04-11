@@ -22,6 +22,11 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < 1000;++i) {
             p->put(i,"s");
         }
+        std::string s;
+
+        for (int i = 0; i < 10000;++i) {
+
+        }
         p->gc(1024);
 //        delete p;
         for (int i = 0; i < 1000;++i) {

@@ -104,6 +104,10 @@ namespace LSMKV {
 		return s == tombstone;
 	}
 
+    bool MemTable::DELETED(const Slice& s) {
+        return s == Slice(tombstone, 9);
+    }
+
 	bool MemTable::contains(uint64_t key) {
 		return table.contains(key);
 	}
