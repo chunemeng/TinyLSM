@@ -87,12 +87,14 @@ namespace LSMKV {
         // add new level
         if (level > cache.size()) {
             size_t j = cache.size();
-            for (size_t i = j; i <= level; ++i) {
+            for (size_t i = j; i <= level + 1; ++i) {
                 cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
             }
         }
+		bool isDrop = cache[level + 1].empty();
 
-        // store the sst with same timestamp
+
+		// store the sst with same timestamp
         std::priority_queue<std::multimap<uint64_t, TableIterator *>::iterator, std::vector<std::multimap<uint64_t, TableIterator *>::iterator>, CmpKey> que;
         bool isFull = false;
         // iterator comparator
@@ -186,12 +188,12 @@ namespace LSMKV {
             cache[level + 1].erase(cit.second);
         }
         // START MERGE
-        Merge(file_no, level, timestamp, wait_to_merge, need_to_write, file_location,
+        Merge(file_no, level, timestamp,isDrop, wait_to_merge, need_to_write, file_location,
               old_file_nos);
         return timestamp;
     }
 
-    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp,
+    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp,bool isDrop,
                          std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                          std::vector<Slice> &need_to_write, std::set<uint64_t> &file_location,
                          std::vector<uint64_t> *old_file_nos) {
@@ -243,30 +245,34 @@ namespace LSMKV {
 
                     }
                 }
+				for (auto &i: need_to_next) {
+					auto index = (*i).second;
+					(index)->next();
+					if (!((index)->hasNext())) {
+						auto it = (index)->file_no();
+						// find the level of the file
+						if (file_location.count(it)) {
+							old_file_nos[0].emplace_back(it);
+						} else {
+							old_file_nos[1].emplace_back(it);
+						}
+						delete (index);
+						// if erase first, the iterator will invalid
+						wait_to_merge.erase(i);
+					}
+				}
+				need_to_next.clear();
+				auto value_size = DecodeFixed32(value.data() + 8);
+				if (!value_size) {
+					continue;
+				}
                 ++t_size;
                 // WRITE KEY AND OFFSET
                 EncodeFixed64(tmp + key_offset, wait_insert_key);
-                auto t = DecodeFixed64(value.data());
 
+				// this value.size is offset and vlen, it equals 12
                 memcpy(tmp + key_offset + 8, value.data(), value.size());
                 key_offset = key_offset + 20;
-                for (auto &i: need_to_next) {
-                    auto index = (*i).second;
-                    (index)->next();
-                    if (!((index)->hasNext())) {
-                        auto it = (index)->file_no();
-                        // find the level of the file
-                        if (file_location.count(it)) {
-                            old_file_nos[0].emplace_back(it);
-                        } else {
-                            old_file_nos[1].emplace_back(it);
-                        }
-                        delete (index);
-                        // if erase first, the iterator will invalid
-                        wait_to_merge.erase(i);
-                    }
-                }
-                need_to_next.clear();
             }
             need_to_next.clear();
             //WRITE HEADER

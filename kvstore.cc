@@ -4,6 +4,7 @@
 #include <string>
 
 int KVStore::writeLevel0(KVStore* kvStore) {
+	std::lock_guard<std::mutex> guard(kvStore->mut);
 	std::unique_ptr<LSMKV::MemTable> imm;
 	imm.reset(kvStore->mem.release());
 	return kvStore->writeLevel0Table(imm.get());
@@ -30,17 +31,24 @@ KVStore::~KVStore() {
 void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
-		if (imm == nullptr) {
-			imm.reset(mem.release());
-			writeLevel0Table(imm.get());
-			imm = nullptr;
-            mem.reset(new LSMKV::MemTable());
-		} else {
-			auto ptr = mem.release();
-			writeLevel0Table(ptr);
-			delete ptr;
-			mem.reset(new LSMKV::MemTable());
-		}
+//		writeLevel0(this);
+//		mem.reset(new LSMKV::MemTable());
+//		std::thread t(writeLevel0,this);
+//		t.detach();
+		std::thread t(writeLevel0,this);
+		t.detach();
+		mem.reset(new LSMKV::MemTable());
+//		if (imm == nullptr) {
+//			imm.reset(mem.release());
+//			writeLevel0Table(imm.get());
+//			imm = nullptr;
+//            mem.reset(new LSMKV::MemTable());
+//		} else {
+//			auto ptr = mem.release();
+//			writeLevel0Table(ptr);
+//			delete ptr;
+//			mem.reset(new LSMKV::MemTable());
+//		}
 	}
 	mem->put(key, s);
 	p->EndTest("PUT");
@@ -53,17 +61,24 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 void KVStore::put(uint64_t key, const std::string& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
-		if (imm == nullptr) {
-			imm.reset(mem.release());
-			mem.reset(new LSMKV::MemTable());
-			writeLevel0Table(imm.get());
-			imm = nullptr;
-		} else {
-			auto ptr = mem.release();
-			writeLevel0Table(ptr);
-			delete ptr;
-			mem.reset(new LSMKV::MemTable());
-		}
+//		writeLevel0(this);
+//		mem.reset(new LSMKV::MemTable());
+//		std::thread t(writeLevel0,this);
+//		t.detach();
+		std::thread t(writeLevel0,this);
+		t.detach();
+		mem.reset(new LSMKV::MemTable());
+//		if (imm == nullptr) {
+//			imm.reset(mem.release());
+//			mem.reset(new LSMKV::MemTable());
+//			writeLevel0Table(imm.get());
+//			imm = nullptr;
+//		} else {
+//			auto ptr = mem.release();
+//			writeLevel0Table(ptr);
+//			delete ptr;
+//			mem.reset(new LSMKV::MemTable());
+//		}
 	}
 	mem->put(key, s);
 	p->EndTest("PUT");
@@ -321,8 +336,11 @@ void KVStore::gc(uint64_t chunk_size) {
     assert(st == 0);
 	v->tail += current_size;
 	if (mem->memoryUsage() != 0) {
-		auto m = mem.release();
-		writeLevel0Table(m);
+//		auto m = mem.release();
+//		writeLevel0Table(m);
+//		mem.reset(new LSMKV::MemTable());
+		std::thread t(writeLevel0,this);
+		t.detach();
 		mem.reset(new LSMKV::MemTable());
 	}
 	p->EndTest("GC");

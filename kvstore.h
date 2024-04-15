@@ -1,6 +1,8 @@
 #pragma once
 
 #include <utility>
+#include <thread>
+#include <mutex>
 
 #include "kvstore_api.h"
 #include "src/memtable.h"
@@ -35,6 +37,7 @@ private:
 	Deleter deleter;
 	std::unique_ptr<LSMKV::MemTable,Deleter> mem;
 	std::unique_ptr<LSMKV::MemTable> imm;
+	mutable std::mutex mut;
 
 
 	static int writeLevel0(KVStore *kvStore);

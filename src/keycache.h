@@ -39,7 +39,7 @@ namespace LSMKV {
 
         void Merge(uint64_t file_no,
                    uint64_t level,
-                   uint64_t timestamp,
+                   uint64_t timestamp,bool isDrop,
                    std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                    std::vector<Slice> &need_to_write,
                    std::set<uint64_t> &file_location,
