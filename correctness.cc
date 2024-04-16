@@ -103,6 +103,7 @@ private:
 		for (i = 0; i < max; ++i)
 		{
 			EXPECT(std::string(i + 1, 's'), store.get(i));
+
 			switch (i % 3)
 			{
 			case 0:

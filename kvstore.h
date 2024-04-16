@@ -33,18 +33,18 @@ private:
 	LSMKV::KeyCache* kc;
 	LSMKV::Cache* cache;
 	Performance* p;
-	std::function<void(void)> callback= [this] {KVStore::writeLevel0(this); };
+	std::function<void(void)> callback= [this] {KVStore::writeLevel0(this->dbname,this->mem.release(),this->v,this->kc); };
 	Deleter deleter;
 	std::unique_ptr<LSMKV::MemTable,Deleter> mem;
 	std::future<void> future;
 
-	static void writeLevel0(KVStore *kvStore);
+	static void writeLevel0(const std::string& dbname,LSMKV::MemTable* memtable, LSMKV::Version *v, LSMKV::KeyCache* kc);
 
 	void putWhenGc(uint64_t key, const LSMKV::Slice& s);
 
 	bool GetOffset(uint64_t key, uint64_t& offset);
 
-	int writeLevel0Table(LSMKV::MemTable* memTable);
+	void writeLevel0Table(LSMKV::MemTable* memTable);
 public:
 	KVStore(const std::string& dir, const std::string& vlog);
 

@@ -69,7 +69,6 @@ namespace LSMKV {
                             std::vector<uint64_t> &need_to_move, std::vector<Slice> &need_to_write) {
         // NEED LEVEL-N AND LEVEL-N+1 FILE_NOS
         // TODO CHANGE TO UNORDERED_MAP(?)
-
         // key is timestamp, value is iterator
         std::multimap<uint64_t, std::multimap<uint64_t, TableIterator *>::iterator> choose_this_level;
         // tmp value
@@ -91,10 +90,10 @@ namespace LSMKV {
                 cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
             }
         }
-		bool isDrop = cache[level + 1].empty();
+        bool isDrop = cache[level + 1].empty();
 
 
-		// store the sst with same timestamp
+        // store the sst with same timestamp
         std::priority_queue<std::multimap<uint64_t, TableIterator *>::iterator, std::vector<std::multimap<uint64_t, TableIterator *>::iterator>, CmpKey> que;
         bool isFull = false;
         // iterator comparator
@@ -188,12 +187,12 @@ namespace LSMKV {
             cache[level + 1].erase(cit.second);
         }
         // START MERGE
-        Merge(file_no, level, timestamp,isDrop, wait_to_merge, need_to_write, file_location,
+        Merge(file_no, level, timestamp, false, wait_to_merge, need_to_write, file_location,
               old_file_nos);
         return timestamp;
     }
 
-    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp,bool isDrop,
+    void KeyCache::Merge(uint64_t file_no, uint64_t level, uint64_t timestamp, bool isDrop,
                          std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                          std::vector<Slice> &need_to_write, std::set<uint64_t> &file_location,
                          std::vector<uint64_t> *old_file_nos) {
@@ -213,6 +212,7 @@ namespace LSMKV {
             uint64_t wait_insert_key = UINT64_MAX;
             uint64_t key_timestamp;
             Slice value;
+            bool skip = false;
             // CURRENT TABLE_CACHE.SIZE
             uint64_t t_size = 0;
             while (t_size < 408 && !wait_to_merge.empty()) {
@@ -245,36 +245,44 @@ namespace LSMKV {
 
                     }
                 }
-				for (auto &i: need_to_next) {
-					auto index = (*i).second;
-					(index)->next();
-					if (!((index)->hasNext())) {
-						auto it = (index)->file_no();
-						// find the level of the file
-						if (file_location.count(it)) {
-							old_file_nos[0].emplace_back(it);
-						} else {
-							old_file_nos[1].emplace_back(it);
-						}
-						delete (index);
-						// if erase first, the iterator will invalid
-						wait_to_merge.erase(i);
-					}
-				}
-				need_to_next.clear();
-				auto value_size = DecodeFixed32(value.data() + 8);
-				if (!value_size) {
-					continue;
-				}
-                ++t_size;
-                // WRITE KEY AND OFFSET
-                EncodeFixed64(tmp + key_offset, wait_insert_key);
+                if (isDrop) {
+                    auto value_size = DecodeFixed32(value.data() + 8);
+                    if (!value_size) {
+                        skip = true;
+                    }
+                }
+                if (!skip) {
+                    ++t_size;
+                    // WRITE KEY AND OFFSET
+                    EncodeFixed64(tmp + key_offset, wait_insert_key);
 
-				// this value.size is offset and vlen, it equals 12
-                memcpy(tmp + key_offset + 8, value.data(), value.size());
-                key_offset = key_offset + 20;
+                    // this value.size is offset and vlen, it equals 12
+                    memcpy(tmp + key_offset + 8, value.data(), value.size());
+                    key_offset = key_offset + 20;
+                }
+
+                for (auto &i: need_to_next) {
+                    auto index = (*i).second;
+                    (index)->next();
+                    if (!((index)->hasNext())) {
+                        auto it = (index)->file_no();
+                        // find the level of the file
+                        if (file_location.count(it)) {
+                            old_file_nos[0].emplace_back(it);
+                        } else {
+                            old_file_nos[1].emplace_back(it);
+                        }
+                        delete (index);
+                        // if erase first, the iterator will invalid
+                        wait_to_merge.erase(i);
+                    }
+                }
+                need_to_next.clear();
             }
             need_to_next.clear();
+            if (t_size == 0) {
+                continue;
+            }
             //WRITE HEADER
             // WRITE TIMESTAMP
             EncodeFixed64(tmp, timestamp);
@@ -286,6 +294,8 @@ namespace LSMKV {
             EncodeFixed64(tmp + 24, wait_insert_key);
 
             tmp_slice = Slice(tmp, t_size * 20 + 8224);
+
+
             // todo bug when use emplace_back
             need_to_write.emplace_back(tmp_slice);
             auto iterator = new TableIterator(table_cache);
