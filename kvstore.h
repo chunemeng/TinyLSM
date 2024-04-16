@@ -3,6 +3,7 @@
 #include <utility>
 #include <thread>
 #include <mutex>
+#include <future>
 
 #include "kvstore_api.h"
 #include "src/memtable.h"
@@ -18,14 +19,13 @@ class KVStore : public KVStoreAPI {
 private:
 	struct Deleter{
 		void operator()(LSMKV::MemTable* memtable) const {
-            std::cout<<"deleter"<<std::endl;
 			if (memtable->memoryUsage() != 0) {
 				callback();
 			}
 			delete memtable;
 		}
-		Deleter(std::function<int(void)>&& callback):callback(std::move(callback)){}
-		std::function<int(void)> callback;
+		Deleter(std::function<void(void)>&& callback):callback(std::move(callback)){}
+		std::function<void(void)> callback;
 	};
 	LSMKV::Version* v;
 	std::string dbname;
@@ -33,14 +33,12 @@ private:
 	LSMKV::KeyCache* kc;
 	LSMKV::Cache* cache;
 	Performance* p;
-	std::function<int(void)> callback= [this] {return KVStore::writeLevel0(this); };
+	std::function<void(void)> callback= [this] {KVStore::writeLevel0(this); };
 	Deleter deleter;
 	std::unique_ptr<LSMKV::MemTable,Deleter> mem;
-	std::unique_ptr<LSMKV::MemTable> imm;
-	mutable std::mutex mut;
+	std::future<void> future;
 
-
-	static int writeLevel0(KVStore *kvStore);
+	static void writeLevel0(KVStore *kvStore);
 
 	void putWhenGc(uint64_t key, const LSMKV::Slice& s);
 

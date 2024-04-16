@@ -3,11 +3,10 @@
 #include <memory>
 #include <string>
 
-int KVStore::writeLevel0(KVStore* kvStore) {
-	std::lock_guard<std::mutex> guard(kvStore->mut);
+void KVStore::writeLevel0(KVStore* kvStore) {
 	std::unique_ptr<LSMKV::MemTable> imm;
 	imm.reset(kvStore->mem.release());
-	return kvStore->writeLevel0Table(imm.get());
+	kvStore->writeLevel0Table(imm.get());
 }
 
 KVStore::KVStore(const std::string& dir, const std::string& vlog)
@@ -31,13 +30,14 @@ KVStore::~KVStore() {
 void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
+		if (future.valid()) {
+			future.get();
+		}
+		future = std::async(std::launch::async, writeLevel0, this);
 //		writeLevel0(this);
 //		mem.reset(new LSMKV::MemTable());
 //		std::thread t(writeLevel0,this);
 //		t.detach();
-		std::thread t(writeLevel0,this);
-		t.detach();
-		mem.reset(new LSMKV::MemTable());
 //		if (imm == nullptr) {
 //			imm.reset(mem.release());
 //			writeLevel0Table(imm.get());
@@ -61,13 +61,17 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice& s) {
 void KVStore::put(uint64_t key, const std::string& s) {
 	p->StartTest("PUT");
 	if (mem->memoryUsage() == MEM_MAX_SIZE) {
+		if (future.valid()) {
+			future.get();
+		}
+		future = std::async(std::launch::async, writeLevel0, this);
 //		writeLevel0(this);
 //		mem.reset(new LSMKV::MemTable());
 //		std::thread t(writeLevel0,this);
 //		t.detach();
-		std::thread t(writeLevel0,this);
-		t.detach();
-		mem.reset(new LSMKV::MemTable());
+//		std::thread t(writeLevel0,this);
+//		t.detach();
+//		mem.reset(new LSMKV::MemTable());
 //		if (imm == nullptr) {
 //			imm.reset(mem.release());
 //			mem.reset(new LSMKV::MemTable());
@@ -153,11 +157,11 @@ bool KVStore::del(uint64_t key) {
  * including memtable and all sstables files.
  */
 void KVStore::reset() {
-	imm = nullptr;
+//	imm = nullptr;
 	delete mem.release();
 
 	// Otherwise it will destructor twice!!!
-	imm = nullptr;
+//	imm = nullptr;
 	utils::rmfiles(dbname);
 	v->reset();
 	kc->reset();
@@ -251,6 +255,9 @@ bool KVStore::GetOffset(uint64_t key, uint64_t& offset) {
  */
 void KVStore::gc(uint64_t chunk_size) {
 	p->StartTest("GC");
+	if (future.valid()) {
+		future.get();
+	}
 	LSMKV::RandomReadableFile* file;
 	LSMKV::Status s = LSMKV::NewRandomReadableFile(vlog_path, &file);
 	// TODO NOT OVERFLOW
@@ -339,9 +346,10 @@ void KVStore::gc(uint64_t chunk_size) {
 //		auto m = mem.release();
 //		writeLevel0Table(m);
 //		mem.reset(new LSMKV::MemTable());
-		std::thread t(writeLevel0,this);
-		t.detach();
-		mem.reset(new LSMKV::MemTable());
+		if (future.valid()) {
+			future.get();
+		}
+		future = std::async(std::launch::async, writeLevel0, this);
 	}
 	p->EndTest("GC");
 }
