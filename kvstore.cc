@@ -31,6 +31,9 @@ KVStore::KVStore(const std::string &dir, const std::string &vlog)
 }
 
 KVStore::~KVStore() {
+    if (future.valid()) {
+        future.get();
+    }
     delete mem.release();
     p->EndTest("TOTAL");
     delete p;
@@ -48,7 +51,7 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
         future = std::async(std::launch::async, writeLevel0, dbname, mem.release(), v, kc);
         mem.reset(new LSMKV::MemTable());
 //		writeLevel0(this);
-//		mem.reset(new LSMKV::MemTable());
+//		mem.reset(new LSMKV::MemTable());SS
 //		std::thread t(writeLevel0,this);
 //		t.detach();
 //		if (imm == nullptr) {
