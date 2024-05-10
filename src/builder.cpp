@@ -85,6 +85,7 @@ namespace LSMKV {
             delete vLogBuilder;
 //			delete[] sst_meta;
             v->fileno++;
+
 //            kc->LogLevel(0, 5);
             if (compaction) {
                 SSTCompaction(level, v->fileno, v, kc);
@@ -119,6 +120,7 @@ namespace LSMKV {
         v->AddNewLevelStatus(level + 1, v->fileno - need_to_write.size(), need_to_write.size());
         // remove old sst
         v->ClearLevelStatus(level, old_files);
+
         // PASS THE COMPACTION
         if (v->LevelOver(level + 1)) {
             SSTCompaction(level + 1, v->fileno, v, kc);
