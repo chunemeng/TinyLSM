@@ -12,6 +12,7 @@ void KVStore::writeLevel0(KVStore *kvStore) {
 KVStore::KVStore(const std::string &dir, const std::string &vlog)
         : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
     kc = new LSMKV::KeyCache(dir, v);
+    mem = std::make_unique<LSMKV::MemTable>();
     p = new Performance(dir);
     builder_ = new LSMKV::Builder();
     builder_->dbname_ = dbname.c_str();
@@ -31,6 +32,7 @@ void KVStore::genBuilder() {
     imm = std::move(mem);
     LSMKV::Iterator *iter = imm->newIterator();
     builder_->setAll(imm->memoryUsage(), v, iter, kc);
+    mem = std::make_unique<LSMKV::MemTable>();
 }
 
 void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
@@ -42,12 +44,12 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
             imm = nullptr;
             delete builder_->it_;
         }
-        std::promise<bool> promise;
-        future_ = promise.get_future();
-        genBuilder();
-        LSMKV::Builder b = *builder_;
-        auto f = [&b]() { b(); };
-        scheduler_.Schedule({f, std::move(promise)});
+        writeLevel0Table(mem.release());
+        mem = std::make_unique<LSMKV::MemTable>();
+//        std::promise<bool> promise;
+//        future_ = promise.get_future();
+//        genBuilder();
+//        scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
     p->EndTest("PUT");
@@ -69,9 +71,7 @@ void KVStore::put(uint64_t key, const std::string &s) {
         std::promise<bool> promise;
         future_ = promise.get_future();
         genBuilder();
-        LSMKV::Builder b = *builder_;
-        auto f = [&b]() { b(); };
-        scheduler_.Schedule({f, std::move(promise)});
+        scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
     p->EndTest("PUT");
@@ -321,9 +321,7 @@ void KVStore::gc(uint64_t chunk_size) {
         std::promise<bool> promise;
         future_ = promise.get_future();
         genBuilder();
-        LSMKV::Builder b = *builder_;
-        auto f = [&b]() { b(); };
-        scheduler_.Schedule({f, std::move(promise)});
+        scheduler_.Schedule({*builder_, std::move(promise)});
     }
     p->EndTest("GC");
 }

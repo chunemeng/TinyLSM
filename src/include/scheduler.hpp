@@ -3,21 +3,32 @@
 
 #include <future>
 #include <optional>
+#include "queue.hpp"
+#include "./builder.h"
 
 namespace LSMKV {
     class Scheduler {
     public:
-        using Task = std::function<void()>;
+        using Task = LSMKV::Builder;
         struct Request {
             Task task;
             std::promise<bool> callback_;
         };
 
-        Scheduler();
+        Scheduler() {
+            background_thread_.emplace([&] { StartSchedule(); });
+        }
 
-        ~Scheduler();
+        ~Scheduler() {
+            request_queue_.push(std::nullopt);
+            if (background_thread_.has_value()) {
+                background_thread_->join();
+            }
+        }
 
-        void Schedule(Request r);
+        void Schedule(Request r) {
+            request_queue_.push(std::move(r));
+        }
 
         void StartSchedule() {
             std::optional<Request> req;
@@ -33,21 +44,6 @@ namespace LSMKV {
         /** The background thread responsible for issuing scheduled requests to the disk manager. */
         std::optional<std::thread> background_thread_;
     };
-
-    void Scheduler::Schedule(Scheduler::Request r) {
-        request_queue_.push(std::move(r));
-    }
-
-    Scheduler::Scheduler(){
-        background_thread_.emplace([&] { StartSchedule(); });
-    }
-
-    Scheduler::~Scheduler() {
-        request_queue_.push(std::nullopt);
-        if (background_thread_.has_value()) {
-            background_thread_->join();
-        }
-    }
 }
 
 #endif //LSMKV_SCHEDULER_HPP
