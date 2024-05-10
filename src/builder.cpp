@@ -1,11 +1,11 @@
-#include "builder.h"
+#include "include/builder.h"
 #include "../utils/slice.h"
 #include "../utils/iterator.h"
 #include "../utils/filename.h"
 #include "../utils/file.h"
 #include "../utils/coding.h"
-#include "version.h"
-#include "vlogbuilder.h"
+#include "include/version.h"
+#include "include/vlogbuilder.h"
 #include "../utils/bloomfilter.h"
 
 namespace LSMKV {

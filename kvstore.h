@@ -6,37 +6,47 @@
 #include <future>
 
 #include "kvstore_api.h"
-#include "src/memtable.h"
-#include "src/version.h"
-#include "src/keycache.h"
-#include "src/cache.h"
+#include "src/include/memtable.h"
+#include "src/include/version.h"
+#include "src/include/keycache.h"
+#include "src/include/cache.h"
 #include "test/performance.h"
+#include "src/include/scheduler.hpp"
+#include "src/include/builder.h"
 
 #define MEM_MAX_SIZE 408
 
 class KVStore : public KVStoreAPI {
 	// You can add your implementation here
 private:
-	struct Deleter{
-		void operator()(LSMKV::MemTable* memtable) const {
-			if (memtable->memoryUsage() != 0) {
-				callback();
-			}
-			delete memtable;
-		}
-		Deleter(std::function<void(void)>&& callback):callback(std::move(callback)){}
-		std::function<void(void)> callback;
-	};
+//	struct Deleter{
+//		void operator()(LSMKV::MemTable* memtable) const {
+//			if (memtable->memoryUsage() != 0) {
+//				callback();
+//			}
+//			delete memtable;
+//		}
+//		Deleter(std::function<void(void)>&& callback):callback(std::move(callback)){}
+//		std::function<void(void)> callback;
+//	};
+//    std::function<void(void)> callback= [this] {KVStore::writeLevel0(this); };
+//    Deleter deleter;
+//	std::future<void> future;
+    LSMKV::Scheduler scheduler_;
 	LSMKV::Version* v;
 	std::string dbname;
 	std::string vlog_path;
+    std::optional<std::future<bool>> future_;
+    LSMKV::Builder* builder_;
 	LSMKV::KeyCache* kc;
 	LSMKV::Cache* cache;
 	Performance* p;
-	std::function<void(void)> callback= [this] {KVStore::writeLevel0(this); };
-	Deleter deleter;
-	std::unique_ptr<LSMKV::MemTable,Deleter> mem;
-	std::future<void> future;
+
+	std::unique_ptr<LSMKV::MemTable> mem;
+
+    std::unique_ptr<LSMKV::MemTable> imm;
+
+    void genBuilder();
 
 	static void writeLevel0(KVStore *kvStore);
 

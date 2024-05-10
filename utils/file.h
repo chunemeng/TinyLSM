@@ -3,7 +3,7 @@
 
 #include <fcntl.h>
 #include "slice.h"
-#include "../src/status.h"
+#include "../src/include/status.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/mman.h>

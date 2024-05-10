@@ -37,33 +37,36 @@ set(SRC_FILES
         MurmurHash3.h
         utils.h
         utils/arena.cpp
-        src/skiplist.h
-        src/memtable.h
+        src/include/skiplist.h
+        src/include/memtable.h
         src/memtable.cpp
         utils/bloomfilter.h
         utils/iterator.h
         utils/slice.h
         utils/option.h
         src/builder.cpp
-        src/builder.h
+        src/include/builder.h
         utils/filemeta.h
         utils/coding.h
         utils/filename.h
         utils/file.h
-        src/status.h
+        src/include/status.h
         src/status.cpp
-        src/version.h
-        src/vlogbuilder.h
-        src/table.h
+        src/include/version.h
+        src/include/vlogbuilder.h
+        src/include/table.h
         src/cache.cpp
-        src/cache.h
+        src/include/cache.h
         src/vlogcache.cpp
-        src/vlogcache.h
+        src/include/vlogcache.h
         src/keycache.cpp
-        src/keycache.h
+        src/include/keycache.h
 )
 add_executable(TEST lsm_test.cpp ${SRC_FILES})
 
 add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
-        )
+        src/include/scheduler.hpp
+        src/include/queue.hpp
+        src/include/thread.h
+)
 add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})

@@ -1,5 +1,5 @@
 #include <utility>
-#include "memtable.h"
+#include "include/memtable.h"
 #include "../utils/coding.h"
 
 //template<class T>
@@ -23,6 +23,7 @@ namespace LSMKV {
 		bool hasNext() const override {
 			return _iter.hasNext();
 		}
+
 		void seek(const key_type& k) override {
 			_iter.seek(k);
 		}

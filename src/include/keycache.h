@@ -5,7 +5,7 @@
 #include <queue>
 #include "memtable.h"
 #include "table.h"
-#include "../utils.h"
+#include "../../utils.h"
 #include "version.h"
 #include <map>
 #include <set>

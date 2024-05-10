@@ -5,10 +5,10 @@
 #include <cstdint>
 #include <vector>
 #include <set>
-#include "../utils/file.h"
-#include "../utils/coding.h"
-#include "../utils/filename.h"
-#include "../utils.h"
+#include "../../utils/file.h"
+#include "../../utils/coding.h"
+#include "../../utils/filename.h"
+#include "../../utils.h"
 namespace LSMKV {
 	struct Version {
 		explicit Version(const std::string& dbname) : filename(VersionFileName(dbname)) {

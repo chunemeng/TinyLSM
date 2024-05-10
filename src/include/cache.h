@@ -1,7 +1,7 @@
 #ifndef LSMKV_SRC_CACHE_H
 #define LSMKV_SRC_CACHE_H
 #include <cstdint>
-#include "../utils/slice.h"
+#include "../../utils/slice.h"
 namespace LSMKV {
 	class Cache;
 	// Value Cache

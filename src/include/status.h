@@ -1,7 +1,7 @@
 #ifndef STATUS_H
 #define STATUS_H
 
-#include "../utils/slice.h"
+#include "../../utils/slice.h"
 namespace LSMKV {
 	class Status {
 	public:
