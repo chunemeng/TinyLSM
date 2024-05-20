@@ -23,6 +23,7 @@ namespace LSMKV {
             request_queue_.push(std::nullopt);
             if (background_thread_.has_value()) {
                 background_thread_->join();
+                background_thread_.reset();
             }
         }
 
@@ -43,6 +44,7 @@ namespace LSMKV {
         Queue<std::optional<Request>> request_queue_;
         /** The background thread responsible for issuing scheduled requests to the disk manager. */
         std::optional<std::thread> background_thread_;
+        std::atomic<bool> empty_{true};
     };
 }
 

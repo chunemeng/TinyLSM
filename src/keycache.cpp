@@ -96,6 +96,7 @@ namespace LSMKV {
 
         // store the sst with same timestamp
         std::priority_queue<std::multimap<uint64_t, TableIterator *>::iterator, std::vector<std::multimap<uint64_t, TableIterator *>::iterator>, CmpKey> que;
+
         bool isFull = false;
         // iterator comparator
         CmpKey cmp;
@@ -169,16 +170,23 @@ namespace LSMKV {
         choose_this_level.clear();
 
         // Read ALL Conflicted file In NextLevel
-        FindCompactionNextLevel(
-                level + 1,
-                [&](auto &rit) {
-                    it = *rit;
-                    if (it.second->InRange(smallest_key, largest_key)) {
-                        timestamp = std::max(it.first, timestamp);
-                        choose_this_level.emplace((*rit).first, rit);
-                    }
-                    return false;
-                });
+        for (auto rit = cache[level + 1].begin(); rit != cache[level + 1].end(); ++rit) {
+            it = *rit;
+            if (it.second->InRange(smallest_key, largest_key)) {
+                timestamp = std::max(it.first, timestamp);
+                choose_this_level.emplace((*rit).first, rit);
+            }
+        }
+//        FindCompactionNextLevel(
+//                level + 1,
+//                [&](auto &rit) {
+//                    it = *rit;
+//                    if (it.second->InRange(smallest_key, largest_key)) {
+//                        timestamp = std::max(it.first, timestamp);
+//                        choose_this_level.emplace((*rit).first, rit);
+//                    }
+//                    return false;
+//                });
 
         // START ALL ITERATOR AT START STATE
         for (auto &cit: choose_this_level) {

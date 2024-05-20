@@ -9,7 +9,7 @@
 #include <atomic>
 
 namespace LSMKV {
-    static constexpr int MAX_LEVEL = 16;
+    static constexpr int MAX_LEVEL = 8;
     typedef unsigned char byte;
 
     template<typename K, typename V>
@@ -18,22 +18,14 @@ namespace LSMKV {
         struct node {
             K const _key;
             V _value;
-            std::atomic<node *> _next[1];
+            node * _next[1];
 
             node *next(const byte &level) {
-                return _next[level].load(std::memory_order_acquire);
+                return _next[level];
             }
 
             void setnext(const byte &l, node *n) {
-                _next[l].store(n, std::memory_order_release);
-            }
-
-            node *NoBarrier_Next(const byte &level) {
-                return _next[level].load(std::memory_order_relaxed);
-            }
-
-            void NoBarrier_SetNext(const byte &l, node *n) {
-                _next[l].store(n, std::memory_order_relaxed);
+                _next[l] = n;
             }
 
             node(const K &key, V &&value) : _key(key), _value(std::forward<V>(value)) {
@@ -94,11 +86,11 @@ namespace LSMKV {
 //		}
         byte random_level() {
             // Twice faster than upper
-            return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & gen()));
+            return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rand()));
         }
 
         inline byte getMaxHeight() const {
-            return max_level.load(std::memory_order_relaxed);
+            return max_level;
         }
 
         node *createNode(const K &key, V &&value, const byte &level) {
@@ -107,11 +99,8 @@ namespace LSMKV {
         }
 
         Arena *arena;
-        std::atomic<byte> max_level;
+        byte max_level;
         node *_head;
-        // todo remove this
-        // it is 2504bytes monster
-        std::mt19937 gen;
     public:
         class Iterator {
         public:
@@ -156,9 +145,7 @@ namespace LSMKV {
 
         explicit Skiplist(Arena *arena)
                 : arena(arena), _head(createNode(0, V(), MAX_LEVEL)), max_level(1) {
-//			srand(time(0));
-            std::random_device rd;
-            gen = std::mt19937(rd());
+			srand(time(0));
             for (byte level = 0; level < MAX_LEVEL; level++) {
                 _head->setnext(level, nullptr);
             }
@@ -185,12 +172,12 @@ namespace LSMKV {
                 for (byte i = getMaxHeight(); i < height; i++) {
                     prev[i] = _head;
                 }
-                max_level.store(height, std::memory_order_relaxed);
+                max_level = (height);
             }
 
             n = createNode(key, std::forward<V>(value), height);
             for (int i = 0; i < height; i++) {
-                n->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
+                n->setnext(i, prev[i]->next(i));
                 prev[i]->setnext(i, n);
             }
             return true;

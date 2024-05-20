@@ -4,6 +4,7 @@ project(LSMKV.handout)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 
+SET(CMAKE_CXX_FLAGS "-O1 -march=native -w -ftree-vectorize")
 
 #include(FetchContent)
 #FetchContent_Declare(
@@ -62,7 +63,7 @@ set(SRC_FILES
         src/keycache.cpp
         src/include/keycache.h
 )
-add_executable(TEST lsm_test.cpp ${SRC_FILES})
+add_executable(TEST performance_test.cpp ${SRC_FILES})
 
 add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
         src/include/scheduler.hpp

@@ -17,7 +17,7 @@ namespace LSMKV {
 				RandomReadableFile* file;
 				NewRandomReadableFile(filename, &file);
 				Slice slice;
-				char buf[32];
+				char buf[40];
 				file->Read(0, 40, &slice, buf);
 				if (slice.size() == 40) {
 					fileno = DecodeFixed64(buf);
@@ -39,16 +39,15 @@ namespace LSMKV {
 		}
 
 		static inline void WriteToFile(const Version *v) {
-			WritableFile* file;
-			NewWritableFile(v->filename, &file);
+			WritableNoBufFile* file;
+			NewWritableNoBufFile(v->filename, &file);
 			char buf[40];
 			EncodeFixed64(buf, v->fileno);
 			EncodeFixed64(buf + 8, v->timestamp);
 			EncodeFixed64(buf + 16, v->head);
 			EncodeFixed64(buf + 24, v->tail);
 			EncodeFixed64(buf + 32, v->max_level);
-			file->Append(Slice(buf, 40));
-			file->Close();
+			file->WriteUnbuffered(buf, 40);
 			delete file;
 		}
 

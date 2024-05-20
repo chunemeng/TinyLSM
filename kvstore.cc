@@ -2,16 +2,21 @@
 #include "src/include/builder.h"
 #include <memory>
 #include <string>
+#include <utility>
+
+#define time_perf
+#define MB (1024 * 1024)
 
 void KVStore::writeLevel0(KVStore *kvStore) {
     std::unique_ptr<LSMKV::MemTable> imm;
-    imm.reset(kvStore->mem.release());
+    imm = std::move(kvStore->mem);
     kvStore->writeLevel0Table(imm.get());
 }
 
 KVStore::KVStore(const std::string &dir, const std::string &vlog)
         : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
     kc = new LSMKV::KeyCache(dir, v);
+    cache = new LSMKV::Cache();
     mem = std::make_unique<LSMKV::MemTable>();
     p = new Performance(dir);
     builder_ = new LSMKV::Builder();
@@ -20,12 +25,18 @@ KVStore::KVStore(const std::string &dir, const std::string &vlog)
 }
 
 KVStore::~KVStore() {
+    if (future_.has_value()) {
+        future_->get();
+        delete builder_->it_;
+    }
     p->EndTest("TOTAL");
+    p->StartTest("REMOVE ALL");
     delete builder_;
-    delete p;
     delete v;
-//	delete cache;
+    delete cache;
     delete kc;
+    p->EndTest("REMOVE ALL");
+    delete p;
 }
 
 void KVStore::genBuilder() {
@@ -36,7 +47,9 @@ void KVStore::genBuilder() {
 }
 
 void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
-    p->StartTest("PUT");
+#ifdef time_perf
+    PerformanceGuard guard(p, "PUT");
+#endif
     if (mem->memoryUsage() == MEM_MAX_SIZE) {
         if (future_.has_value()) {
             future_->get();
@@ -46,13 +59,8 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
         }
         writeLevel0Table(mem.release());
         mem = std::make_unique<LSMKV::MemTable>();
-//        std::promise<bool> promise;
-//        future_ = promise.get_future();
-//        genBuilder();
-//        scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
-    p->EndTest("PUT");
 }
 
 /**
@@ -60,7 +68,9 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
  * No return values for simplicity.
  */
 void KVStore::put(uint64_t key, const std::string &s) {
-    p->StartTest("PUT");
+#ifdef time_perf
+    PerformanceGuard guard(p, "PUT");
+#endif
     if (mem->memoryUsage() == MEM_MAX_SIZE) {
         if (future_.has_value()) {
             future_->get();
@@ -71,10 +81,10 @@ void KVStore::put(uint64_t key, const std::string &s) {
         std::promise<bool> promise;
         future_ = promise.get_future();
         genBuilder();
+        cache->Drop();
         scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
-    p->EndTest("PUT");
 }
 
 static inline bool CheckCrc(const char *data, uint32_t len) {
@@ -86,13 +96,14 @@ static inline bool CheckCrc(const char *data, uint32_t len) {
  * An empty string indicates not found.
  */
 std::string KVStore::get(uint64_t key) {
-    p->StartTest("GET");
+#ifdef time_perf
+    PerformanceGuard guard(p, "GET");
+#endif
     std::string s = mem->get(key);
     if (s.empty()) {
         if (future_.has_value()) {
             s = imm->get(key);
             if (!s.empty()) {
-                p->EndTest("GET");
                 return s;
             }
             future_->get();
@@ -101,38 +112,62 @@ std::string KVStore::get(uint64_t key) {
             delete builder_->it_;
         }
         if (kc->empty()) {
-            p->EndTest("GET");
             return "";
         }
         s = kc->get(key);
+
         if (s.empty()) {
-            p->EndTest("GET");
             return "";
         }
         LSMKV::Slice result;
         uint32_t len = LSMKV::DecodeFixed32(s.data() + 8);
         if (len == 0) {
-            p->EndTest("GET");
             return "";
         }
-        char buf[len + 15];
-        LSMKV::RandomReadableFile *file;
-        LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
-        file->Read(LSMKV::DecodeFixed64(s.data()), len + 15, &result, buf);
-        delete file;
-        p->EndTest("GET");
-        if (result.size() <= 15 || !CheckCrc(result.data(), len + 15)) {
+
+        const char *data;
+        std::unique_ptr<char[]> buf;
+        len += 15;
+
+//        buf = std::make_unique<char[]>(len);
+//        LSMKV::RandomReadableFile *file;
+//        LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
+//        file->Read(LSMKV::DecodeFixed64(s.data()), len, &result, buf.get());
+//        delete file;
+        if (len >= 2 * MB) {
+            buf = std::make_unique<char[]>(len);
+            LSMKV::RandomReadableFile *file;
+            LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
+            file->Read(LSMKV::DecodeFixed64(s.data()), len, &result, buf.get());
+            delete file;
+        } else [[likely]] {
+            auto offset = LSMKV::DecodeFixed64(s.data());
+            if (!cache->Get(offset, len, result)) {
+                cache->Drop();
+                LSMKV::MemoryReadableFile *file;
+                if (!LSMKV::NewRandomMemoryReadFile(LSMKV::VLogFileName(dbname), 4 * MB, offset, &file)) {
+                    buf = std::make_unique<char[]>(len);
+                    LSMKV::RandomReadableFile *file_;
+                    LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file_);
+                    file_->Read(LSMKV::DecodeFixed64(s.data()), len, &result, buf.get());
+                    delete file;
+                } else {
+                    cache->Push(file);
+                    cache->Get(offset, len, result);
+                }
+            }
+        }
+        data = result.data();
+
+        if (result.size() <= 15 || LSMKV::DecodeFixed64(data + 3) != key ||
+            !CheckCrc(data, len)) [[unlikely]] {
             return {};
         }
-        return {result.data() + 15, result.size() - 15};
+        return {data + 15, len - 15};
     }
     if (mem->DELETED(s)) {
-        p->EndTest("GET");
-
         return "";
     }
-    p->EndTest("GET");
-
     return s;
 }
 
@@ -141,13 +176,14 @@ std::string KVStore::get(uint64_t key) {
  * Returns false iff the key is not found.
  */
 bool KVStore::del(uint64_t key) {
-    p->StartTest("DEL");
+#ifdef time_perf
+    PerformanceGuard guard(p, "DEL");
+#endif
     std::string s = get(key);
     if (!s.empty() && !mem->DELETED(s)) {
         put(key, "~DELETED~");
         return true;
     }
-    p->EndTest("DEL");
     return false;
 }
 
@@ -156,13 +192,15 @@ bool KVStore::del(uint64_t key) {
  * including memtable and all sstables files.
  */
 void KVStore::reset() {
+    PerformanceGuard guard(p, "RESET");
     if (future_.has_value()) {
         future_->get();
         future_ = std::nullopt;
         delete builder_->it_;
     }
     imm = nullptr;
-    // Otherwise it will destructor twice!!!
+    cache->Drop();
+
     utils::rmfiles(dbname);
     v->reset();
     kc->reset();
@@ -175,7 +213,9 @@ void KVStore::reset() {
  * An empty string indicates not found.
  */
 void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) {
-    p->StartTest("SCAN");
+#ifdef time_perf
+    PerformanceGuard guard(p, "SCAN");
+#endif
     LSMKV::Iterator *iter = mem->newIterator();
     std::list<std::pair<uint64_t, std::string>> tmp_list;
     iter->scan(key1, key2, tmp_list);
@@ -196,7 +236,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
         LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
         file->Read(LSMKV::DecodeFixed64(it.second.data()), len + 15, &result, buf);
         delete file;
-        if (!CheckCrc(result.data(), len + 15)) {
+        if (LSMKV::DecodeFixed64(result.data() + 3) != it.first || !CheckCrc(result.data(), len + 15)) [[unlikely]] {
             continue;
         }
         result.remove_prefix(15);
@@ -211,7 +251,6 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
         }
     }
     delete iter;
-    p->EndTest("SCAN");
 }
 
 bool KVStore::GetOffset(uint64_t key, uint64_t &offset) {
@@ -227,13 +266,16 @@ bool KVStore::GetOffset(uint64_t key, uint64_t &offset) {
  * chunk_size is the _size in byte you should AT LEAST recycle.
  */
 void KVStore::gc(uint64_t chunk_size) {
-    p->StartTest("GC");
+#ifdef time_perf
+    PerformanceGuard guard(p, "GC");
+#endif
     if (future_.has_value()) {
         future_->get();
         future_ = std::nullopt;
         imm = nullptr;
         delete builder_->it_;
     }
+    cache->Drop();
     LSMKV::RandomReadableFile *file;
     LSMKV::Status s = LSMKV::NewRandomReadableFile(vlog_path, &file);
     // TODO NOT OVERFLOW
@@ -260,13 +302,10 @@ void KVStore::gc(uint64_t chunk_size) {
             file->Read(v->tail + _chunk_size, vlen, &result, tmp);
             assert(result.size() == vlen);
         } else {
-            p->StartTest("read vlog");
             // READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
             file->Read(v->tail, _chunk_size, &result, tmp);
             _chunk_size = result.size();
-            p->EndTest("read vlog");
         }
-        p->StartTest("start find key");
         while (current_size < chunk_size) {
             if (!value_buf.empty()) {
                 // APPEND THE NEXT PART OF CEIL PIECE
@@ -304,12 +343,15 @@ void KVStore::gc(uint64_t chunk_size) {
         delete file;
         delete[] tmp;
     }
-    p->EndTest("start find key");
     assert(current_size <= INT64_MAX);
     assert(v->tail <= INT64_MAX);
-    p->StartTest("dig hole");
+#ifdef time_perf
+    PerformanceGuard guard_(p, "dig hole");
+#endif
     int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
-    p->EndTest("dig hole");
+#ifdef time_perf
+    guard_.drop();
+#endif
     assert(st == 0);
     v->tail += current_size;
     if (mem->memoryUsage() != 0) {
@@ -321,18 +363,19 @@ void KVStore::gc(uint64_t chunk_size) {
         std::promise<bool> promise;
         future_ = promise.get_future();
         genBuilder();
+        cache->Drop();
         scheduler_.Schedule({*builder_, std::move(promise)});
     }
-    p->EndTest("GC");
 }
 
 int KVStore::writeLevel0Table(LSMKV::MemTable *memtable) {
-    p->StartTest("WRITE");
+#ifdef time_perf
+    PerformanceGuard guard_(p, "WRITE");
+#endif
     LSMKV::Iterator *iter = memtable->newIterator();
     FileMeta meta;
     meta.size = memtable->memoryUsage();
     BuildTable(dbname, v, iter, meta, kc);
     delete iter;
-    p->EndTest("WRITE");
     return 0;
 }

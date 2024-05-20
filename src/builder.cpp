@@ -9,12 +9,13 @@
 #include "../utils/bloomfilter.h"
 
 namespace LSMKV {
+#define CHUNK_SIZE (1024 * 1024 * 64)
+
     Status BuildTable(const std::string &dbname, Version *v, Iterator *iter, FileMeta &meta, KeyCache *kc) {
         //	meta->file_size = 0;
         iter->seekToFirst();
         std::string vlog_buf;
 //		key_buf.reserve(1024 * 8);
-        auto vLogBuilder = new VLogBuilder();
         char *key_buf;
         uint64_t value_size = 0, key_offset;
         uint64_t level = FindLevels(dbname, v);
@@ -26,10 +27,12 @@ namespace LSMKV {
 
         Slice tombstone = Slice(tmp, 9);
         if (iter->hasNext()) {
-            WritableFile *file;
+            WritableNoBufFile *file;
             WritableFile *vlog;
-            Status s = NewWritableFile(fname, &file);
+
+            Status s = NewWritableNoBufFile(fname, &file);
             NewAppendableFile(VLogFileName(dbname), &vlog);
+            VLogBuilder vLogBuilder{vlog};
 
             if (!s.ok()) {
                 return s;
@@ -50,7 +53,7 @@ namespace LSMKV {
                 if (val == tombstone) {
                     value_size = 0;
                 } else {
-                    vLogBuilder->Append(key, val);
+                    vLogBuilder.Append(key, val);
                     value_size = val.size();
                 }
 //				size_t key_offset = key_buf.size();
@@ -69,20 +72,19 @@ namespace LSMKV {
             EncodeFixed64(key_buf + 24, meta.largest);
 
             CreateFilter(key_buf + 8224, meta.size, 20, key_buf + 32);
-            file->Append(Slice(key_buf, 8224 + meta.size * 20));
+            file->WriteUnbuffered(key_buf, 8224 + meta.size * 20);
 
 
             kc->PushCache(key_buf, Option::getInstance());
 
             // need multi thread
-            vlog->Append(vLogBuilder->plain_char());
-            vlog->Close();
+            vLogBuilder.Drop();
+//            vlog->Append(vLogBuilder->plain_char());
+//            vlog->WriteUnbuffered(vLogBuilder->plain_char());
+//            vlog->Close();
 
-            file->Close();
             v->head = head_offset;
             delete file;
-            delete vlog;
-            delete vLogBuilder;
 //			delete[] sst_meta;
             v->fileno++;
 
@@ -129,13 +131,20 @@ namespace LSMKV {
     }
 
     Status WriteSlice(std::vector<Slice> &need_to_write, uint64_t level, Version *v) {
-        WritableFile *file;
+        WritableNoBufFile *file;
         auto dbname = v->DBName();
+        const char *tmp;
         for (auto &s: need_to_write) {
-            NewWritableFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
-            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data())+ 32);
-            file->Append(s);
-            file->Close();
+            NewWritableNoBufFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
+            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
+            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+            size_t pod = (num_chunks - 1) * CHUNK_SIZE - s.size();
+            tmp = s.data();
+            for (auto index = 1; index < num_chunks; ++index) {
+                file->WriteUnbuffered(tmp, CHUNK_SIZE);
+                tmp += CHUNK_SIZE;
+            }
+            file->WriteUnbuffered(tmp, pod);
             delete file;
         }
         return Status::OK();
@@ -146,15 +155,14 @@ namespace LSMKV {
         for (auto &it: new_files) {
             utils::mvfile(SSTFilePath(dbname, level, it), SSTFilePath(dbname, level + 1, it));
         }
-        // todo move faster than rewrite(?)
-        WritableFile *file;
+        // todo move may faster than rewrite(?)
+        WritableNoBufFile *file;
         char buf[8];
         // Change the timestamp
         for (auto &it: new_files) {
             NewWriteAtStartFile(SSTFilePath(dbname, level + 1, it), &file);
             EncodeFixed64(buf, timestamp);
-            auto status = file->Append(Slice(buf, 8));
-            file->Close();
+            file->WriteUnbuffered(Slice(buf, 8));
             delete file;
         }
         return Status::OK();

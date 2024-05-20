@@ -1,80 +1,64 @@
 #ifndef LSMKV_SRC_CACHE_H
 #define LSMKV_SRC_CACHE_H
+
 #include <cstdint>
 #include "../../utils/slice.h"
+#include "../../utils/file.h"
+
 namespace LSMKV {
-	class Cache;
-	// Value Cache
-// Create a new cache with a fixed size capacity.  This implementation
-// of Cache uses a least-recently-used eviction policy.
-	Cache* NewLRUCache(size_t capacity);
+    class Cache;
+    // Value Cache
 
-	class Cache {
-	public:
-		Cache() = default;
 
-		Cache(const Cache&) = delete;
-		Cache& operator=(const Cache&) = delete;
+//	Cache* NewLRUCache(size_t capacity);
 
-		// Destroys all existing entries by calling the "deleter"
-		// function that was passed to the constructor.
-		virtual ~Cache();
+    class Cache {
+    public:
+        Cache() = default;
 
-		// Opaque handle to an entry stored in the cache.
-		struct Handle {
-		};
+        Cache(const Cache &) = delete;
 
-		// Insert a mapping from key->value into the cache and assign it
-		// the specified charge against the total cache capacity.
-		//
-		// Returns a handle that corresponds to the mapping.  The caller
-		// must call this->Release(handle) when the returned mapping is no
-		// longer needed.
-		//
-		// When the inserted entry is no longer needed, the key and
-		// value will be passed to "deleter".
-		virtual Handle* Insert(const uint64_t& key,const Slice& value) = 0;
+        Cache &operator=(const Cache &) = delete;
 
-		// If the cache has no mapping for "key", returns nullptr.
-		//
-		// Else return a handle that corresponds to the mapping.  The caller
-		// must call this->Release(handle) when the returned mapping is no
-		// longer needed.
-		virtual Handle* Lookup(const uint64_t& key) = 0;
+        // Destroys all existing entries by calling the "deleter"
+        // function that was passed to the constructor.
+        ~Cache() {
+            if (mmap_file_ != nullptr) {
+                delete mmap_file_;
+            }
+        }
 
-		// Release a mapping returned by a previous Lookup().
-		// REQUIRES: handle must not have been released yet.
-		// REQUIRES: handle must have been returned by a method on *this.
-		virtual void Release(Handle* handle) = 0;
+        void Push(MemoryReadableFile *file) {
+            if (mmap_file_ != nullptr) {
+                delete mmap_file_;
+            }
+            this->mmap_file_ = file;
+            this->offset_ = mmap_file_->GetOffset();
+            this->len_ = mmap_file_->Size();
+        }
 
-		// Return the value encapsulated in a handle returned by a
-		// successful Lookup().
-		// REQUIRES: handle must not have been released yet.
-		// REQUIRES: handle must have been returned by a method on *this.
-		virtual const char* Value(Handle* handle) = 0;
+        bool Get(size_t offset, size_t len, Slice &res) {
+            if (mmap_file_ == nullptr) {
+                return false;
+            }
+            if (offset >= offset_ && offset + len <= offset_ + len_) {
+                mmap_file_->Read(offset - offset_, len, &res, nullptr);
+                return true;
+            }
+            return false;
+        }
 
-		// If the cache contains entry for key, erase it.  Note that the
-		// underlying entry will be kept around until all existing handles
-		// to it have been released.
-		virtual void Erase(const uint64_t& key) = 0;
+        void Drop() {
+            if (mmap_file_) {
+                delete mmap_file_;
+                mmap_file_ = nullptr;
+            }
+        }
 
-		// Return a new numeric id.  May be used by multiple clients who are
-		// sharing the same cache to partition the key space.  Typically the
-		// client will allocate a new id at startup and prepend the id to
-		// its cache keys.
-		virtual uint64_t NewId() = 0;
-
-		// Remove all cache entries that are not actively in use.  Memory-constrained
-		// applications may wish to call this method to reduce memory usage.
-		// Default implementation of Prune() does nothing.  Subclasses are strongly
-		// encouraged to override the default implementation.  A future release of
-		// leveldb may change Prune() to a pure abstract method.
-		virtual void Prune() {
-		}
-
-		// Return an estimate of the combined charges of all elements stored in the
-		// cache.
-		virtual size_t TotalCharge() const = 0;
-	};
+    private:
+        size_t len_{};
+        size_t offset_{};
+        MemoryReadableFile *mmap_file_{};
+    };
 }
 #endif //LSMKV_SRC_CACHE_H
