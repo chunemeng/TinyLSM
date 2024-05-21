@@ -9,6 +9,8 @@ namespace LSMKV {
 
         ~Option() = default;
 
+        // warning: this only control the index use in get
+        // because no index is complex when compaction
         static constexpr bool isIndex = true;
         static constexpr bool isFilter = true;
         static constexpr int bloom_size_ = bloom_size;

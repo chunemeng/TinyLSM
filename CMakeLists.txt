@@ -70,4 +70,6 @@ add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
 )
 add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})
 
-add_executable(THROUGH test/throughput_test.cpp ${SRC_FILES})
+add_executable(Put test/throughput_test.cpp ${SRC_FILES})
+
+add_executable(Get test/random_get_test.cpp ${SRC_FILES})

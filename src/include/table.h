@@ -24,9 +24,9 @@ namespace LSMKV {
         explicit Table(const char *tmp, const uint64_t &file_no) {
             timestamp = DecodeFixed64(tmp);
             this->file_no = file_no;
-            if constexpr (!LSMKV::Option::isIndex) {
-                return;
-            }
+//            if constexpr (!LSMKV::Option::isIndex) {
+//                return;
+//            }
 
             uint64_t size = DecodeFixed64(tmp + 8);
             uint64_t offset = bloom_size;
@@ -50,7 +50,7 @@ namespace LSMKV {
 
         }
 
-        void pushCache(const char *tmp, const Option &op) {
+        void pushCache(const char *tmp) {
             if ((isFilter = LSMKV::Option::isFilter)) {
                 bloom = Slice(tmp + 32, 8192);
             }

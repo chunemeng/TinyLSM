@@ -1,35 +1,34 @@
+#include <cstdint>
 #include "./include/keycache.h"
 
 namespace LSMKV {
 
-    KeyCache::KeyCache(const std::string &db_path, Version *v) : op(Option::getInstance()) {
+    KeyCache::KeyCache(std::string db_path, Version *v) : db_name_(std::move(db_path)) {
         for (int i = 0; i < 8; ++i) {
             cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
         }
         std::vector<std::string> dirs;
         std::vector<std::string> files;
-        utils::scanDirs(db_path, dirs);
+        utils::scanDirs(db_name_, dirs);
         Slice result;
         std::unique_ptr<char[]> raw;
-        bool isIndex = Option::getIsIndex();
-        bool isFilter = Option::getIsFilter();
 
         RandomReadableFile *file;
         bool s;
-        std::string path_name = db_path + "/";
+        std::string path_name = db_name_ + "/";
         size_t dir_size;
         size_t file_size;
         uint64_t dir_level;
 
-        if constexpr (LSMKV::Option::isIndex) {
-//            int offset;
-//            if constexpr (LSMKV::Option::isFilter) {
-//                offset = 0;
-//                raw = std::make_unique<char[]>(16 * 1024);
-//            } else {
-//                offset = LSMKV::Option::bloom_size_ + 32;
-//                raw = std::make_unique<char[]>(LSMKV::Option::key_size_);
-//            }
+//        if constexpr (LSMKV::Option::isIndex) {
+        if (true) {
+            int offset;
+            raw = std::make_unique<char[]>(16 * 1024);
+            if constexpr (LSMKV::Option::isFilter) {
+                offset = 0;
+            } else {
+                offset = LSMKV::Option::bloom_size_ + 32;
+            }
 
             for (auto &dir: dirs) {
                 files.clear();
@@ -51,7 +50,7 @@ namespace LSMKV {
                     if (!s) {
                         continue;
                     }
-                    s = file->Read(0, 16 * 1024, &result, raw.get());
+                    s = file->Read(offset, 16 * 1024 - offset, &result, raw.get() + offset);
                     if (!s || result.empty()) {
                         delete file;
                         continue;
@@ -66,36 +65,70 @@ namespace LSMKV {
             }
 
         } else {
-            for (auto &dir: dirs) {
-                files.clear();
+            for (
+                auto &dir
+                    : dirs) {
+                files.
+
+                        clear();
+
                 dir_size = path_name.size();
-                path_name.append(dir);
+                path_name.
+                        append(dir);
                 path_name.append("/");
                 file_size = path_name.size();
-                utils::scanDir(path_name, files);
+                utils::scanDir(path_name, files
+                );
                 dir_level = atoll(&dir[6]);
 
-                if (v->NeedNewLevel(dir_level)) {
-                    v->AddNewLevel(dir_level - v->GetTreeLevel());
+                if (v->
+                        NeedNewLevel(dir_level)
+                        ) {
+                    v->
+                            AddNewLevel(dir_level
+                                        - v->
+
+                            GetTreeLevel()
+
+                    );
                 }
 
-                for (auto &file_name: files) {
-                    path_name.append(file_name);
-                    v->LoadStatus(dir_level, stoll(file_name));
+                for (
+                    auto &file_name
+                        : files) {
+                    path_name.
+                            append(file_name);
+                    v->
+                            LoadStatus(dir_level, stoll(file_name)
+                    );
                     s = NewRandomReadableFile(path_name, &file);
                     if (!s) {
                         continue;
                     }
-                    if (!s || result.empty()) {
-                        delete file;
+                    if (!s || result.
+
+                            empty()
+
+                            ) {
+                        delete
+                                file;
                         continue;
                     }
-                    auto it = new TableIterator(new Table(result.data(), stoll(file_name)));
-                    cache[dir_level].emplace(it->timestamp(), it);
-                    delete file;
-                    path_name.resize(file_size);
+                    auto it = new TableIterator(new Table(nullptr, stoll(file_name)));
+                    cache[dir_level].
+                            emplace(it
+                                            ->
+
+                                                    timestamp(), it
+
+                    );
+                    delete
+                            file;
+                    path_name.
+                            resize(file_size);
                 }
-                path_name.resize(dir_size);
+                path_name.
+                        resize(dir_size);
             }
         }
 
@@ -365,7 +398,7 @@ namespace LSMKV {
             need_to_write.emplace_back(tmp_slice);
             auto iterator = new TableIterator(table_cache);
 //                iterator->setTimestamp(timestamp);
-            table_cache->pushCache(tmp_slice.data(), op);
+            table_cache->pushCache(tmp_slice.data());
             cache[level + 1].emplace(timestamp, iterator);
             key_offset = 8224;
         }
@@ -423,7 +456,95 @@ namespace LSMKV {
         }
     }
 
+    uint64_t BinarySearchSST(const char *start, uint64_t key, uint64_t size) {
+        uint64_t left = 0, right = size, mid;
+        while (left < right) {
+            mid = left + ((right - left) >> 1);
+            if (DecodeFixed64(start + mid * 20) < key)
+                left = mid + 1;
+            else
+                right = mid;
+        }
+        // To avoid False positive
+        if (left <= size && DecodeFixed64(start + left * 20) == key) {
+            return left;
+        }
+
+        return size;
+    }
+
     std::string KeyCache::get(const uint64_t &key) {
+        if constexpr (!LSMKV::Option::isIndex) {
+            std::vector<std::string> files;
+            Slice result;
+            std::unique_ptr<char[]> raw;
+
+            RandomReadableFile *file;
+            bool s;
+            std::string path_name = db_name_ + "/level-0";
+            std::
+            size_t dir_size;
+            size_t file_size;
+            uint64_t dir_level = 0;
+
+            raw = std::make_unique<char[]>(16 * 1024);
+            std::string res;
+
+            while (utils::dirExists(path_name)) {
+                files.clear();
+                dir_size = path_name.size();
+                path_name.append("level-" + std::to_string(dir_level));
+                path_name.append("/");
+                file_size = path_name.size();
+                utils::scanDir(path_name, files);
+
+                uint64_t timestamp = 0;
+                for (auto &file_name: files) {
+                    path_name.append(file_name);
+                    s = NewRandomReadableFile(path_name, &file);
+                    if (!s) {
+                        continue;
+                    }
+                    s = file->Read(0, 16 * 1024, &result, raw.get());
+                    delete file;
+
+                    if (!s || result.empty()) {
+                        continue;
+                    }
+                    auto cur_timestamp = DecodeFixed64(result.data());
+                    if (cur_timestamp < timestamp) {
+                        continue;
+                    }
+                    auto smallestKey = DecodeFixed64(result.data() + 16);
+                    auto largestKey = DecodeFixed64(result.data() + 24);
+                    if (key < smallestKey || key > largestKey || KeyMayMatch(key, result.data() + 32)) {
+                        continue;
+                    }
+                    auto size = DecodeFixed64(result.data() + 8);
+                    auto index = BinarySearchSST(result.data() + 8224, key, size);
+                    if (index == size) {
+                        continue;
+                    }
+
+                    timestamp = cur_timestamp;
+
+                    res.clear();
+                    res.append(result.data() + 8224 + index * 20, 20);
+
+                    path_name.resize(file_size);
+                    dir_level++;
+                }
+
+                // Found in this level, no need to search next level
+                if (!timestamp) {
+                    return res;
+                }
+
+                path_name.resize(dir_size);
+            }
+            return {};
+        }
+
         TableIterator *table;
         for (auto &level: cache) {
             for (auto &it: std::ranges::reverse_view(level.second)) {
@@ -468,4 +589,5 @@ namespace LSMKV {
             }
         }
     }
+
 }

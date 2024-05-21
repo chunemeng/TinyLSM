@@ -21,7 +21,7 @@ namespace LSMKV {
 
         const KeyCache &operator=(const KeyCache &) = delete;
 
-        explicit KeyCache(const std::string &db_path, Version *v);
+        explicit KeyCache(std::string db_path, Version *v);
 
         void LogLevel(uint64_t level, int i);
 
@@ -55,7 +55,7 @@ namespace LSMKV {
 
         void PushCache(const char *tmp, const Option &op) {
             assert(table_cache != nullptr);
-            table_cache->pushCache(tmp, op);
+            table_cache->pushCache(tmp);
             auto it = new TableIterator(table_cache);
             cache[0].emplace(it->timestamp(), it);
             table_cache = nullptr;
@@ -79,8 +79,7 @@ namespace LSMKV {
         bool GetOffset(const uint64_t &key, uint64_t &offset);
 
     private:
-        const Option &op;
-
+        const std::string db_name_;
         // key is timestamp
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
