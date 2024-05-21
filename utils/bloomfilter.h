@@ -7,10 +7,11 @@
 #include "../MurmurHash3.h"
 
 namespace LSMKV {
-	static constexpr size_t filter_size = 8192 * 8;
+	static constexpr size_t bloom_size = 8192;
 
 	static inline void CreateFilter(const char* keys, size_t n, int len, char* dst) {
 		uint32_t hash[4] = { 0 };
+        auto filter_size = bloom_size * 8;
 		for (int i = 0; i < n; i++) {
 			MurmurHash3_x64_128(keys + len * i, 8, 1, hash);
 			for (uint32_t h : hash) {

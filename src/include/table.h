@@ -12,8 +12,6 @@
 
 namespace LSMKV {
     //instance of sst
-    static constexpr uint64_t bloom_size = 8192;
-
     class Table {
     public:
         explicit Table(const uint64_t &file_no) : file_no(file_no) {
@@ -23,14 +21,18 @@ namespace LSMKV {
             return arena.allocate(size);
         }
 
-        explicit Table(const char *tmp, const uint64_t &file_no, const Option &option) {
+        explicit Table(const char *tmp, const uint64_t &file_no) {
             timestamp = DecodeFixed64(tmp);
             this->file_no = file_no;
+            if constexpr (!LSMKV::Option::isIndex) {
+                return;
+            }
+
             uint64_t size = DecodeFixed64(tmp + 8);
             uint64_t offset = bloom_size;
             sst.reserve(size);
             char *buf;
-            if ((isFilter = option.getIsFilter())) {
+            if ((isFilter = LSMKV::Option::isFilter)) {
                 buf = arena.allocate(size * 20 + bloom_size);
             } else {
                 buf = arena.allocate(size * 20);
@@ -49,7 +51,7 @@ namespace LSMKV {
         }
 
         void pushCache(const char *tmp, const Option &op) {
-            if ((isFilter = op.getIsFilter())) {
+            if ((isFilter = LSMKV::Option::isFilter)) {
                 bloom = Slice(tmp + 32, 8192);
             }
             timestamp = DecodeFixed64(tmp);

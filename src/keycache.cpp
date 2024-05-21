@@ -2,7 +2,7 @@
 
 namespace LSMKV {
 
-    KeyCache::KeyCache(const std::string &db_path, Version *v) {
+    KeyCache::KeyCache(const std::string &db_path, Version *v) : op(Option::getInstance()) {
         for (int i = 0; i < 8; ++i) {
             cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
         }
@@ -10,7 +10,10 @@ namespace LSMKV {
         std::vector<std::string> files;
         utils::scanDirs(db_path, dirs);
         Slice result;
-        char *raw = new char[16 * 1024];
+        std::unique_ptr<char[]> raw;
+        bool isIndex = Option::getIsIndex();
+        bool isFilter = Option::getIsFilter();
+
         RandomReadableFile *file;
         bool s;
         std::string path_name = db_path + "/";
@@ -18,40 +21,83 @@ namespace LSMKV {
         size_t file_size;
         uint64_t dir_level;
 
-        for (auto &dir: dirs) {
-            files.clear();
-            dir_size = path_name.size();
-            path_name.append(dir);
-            path_name.append("/");
-            file_size = path_name.size();
-            utils::scanDir(path_name, files);
-            dir_level = atoll(&dir[6]);
-
-            if (v->NeedNewLevel(dir_level)) {
-                v->AddNewLevel(dir_level - v->GetTreeLevel());
+        if constexpr (LSMKV::Option::isIndex) {
+            if (Option::getIsIndex() && Option::getIsFilter()) {
+                raw = std::make_unique<char[]>(16 * 1024);
+            } else {
+                raw = std::make_unique<char[]>(LSMKV::Option::key_size_);
             }
 
-            for (auto &file_name: files) {
-                path_name.append(file_name);
-                v->LoadStatus(dir_level, stoll(file_name));
-                s = NewRandomReadableFile(path_name, &file);
-                if (!s) {
-                    continue;
+            for (auto &dir: dirs) {
+                files.clear();
+                dir_size = path_name.size();
+                path_name.append(dir);
+                path_name.append("/");
+                file_size = path_name.size();
+                utils::scanDir(path_name, files);
+                dir_level = atoll(&dir[6]);
+
+                if (v->NeedNewLevel(dir_level)) {
+                    v->AddNewLevel(dir_level - v->GetTreeLevel());
                 }
-                s = file->Read(0, 16 * 1024, &result, raw);
-                if (!s || result.empty()) {
-                    delete file;
-                    continue;
-                }
-                auto it = new TableIterator(new Table(result.data(), stoll(file_name), op));
-                cache[dir_level].emplace(it->timestamp(), it);
+
+                for (auto &file_name: files) {
+                    path_name.append(file_name);
+                    v->LoadStatus(dir_level, stoll(file_name));
+                    s = NewRandomReadableFile(path_name, &file);
+                    if (!s) {
+                        continue;
+                    }
+                    s = file->Read(0, 16 * 1024, &result, raw.get());
+                    if (!s || result.empty()) {
+                        delete file;
+                        continue;
+                    }
+                    auto it = new TableIterator(new Table(result.data(), stoll(file_name)));
+                    cache[dir_level].emplace(it->timestamp(), it);
 //					cache.emplace_back();
-                delete file;
-                path_name.resize(file_size);
+                    delete file;
+                    path_name.resize(file_size);
+                }
+                path_name.resize(dir_size);
             }
-            path_name.resize(dir_size);
+
+        } else {
+            for (auto &dir: dirs) {
+                files.clear();
+                dir_size = path_name.size();
+                path_name.append(dir);
+                path_name.append("/");
+                file_size = path_name.size();
+                utils::scanDir(path_name, files);
+                dir_level = atoll(&dir[6]);
+
+                if (v->NeedNewLevel(dir_level)) {
+                    v->AddNewLevel(dir_level - v->GetTreeLevel());
+                }
+
+                for (auto &file_name: files) {
+                    path_name.append(file_name);
+                    v->LoadStatus(dir_level, stoll(file_name));
+                    s = NewRandomReadableFile(path_name, &file);
+                    if (!s) {
+                        continue;
+                    }
+                    if (!s || result.empty()) {
+                        delete file;
+                        continue;
+                    }
+                    auto it = new TableIterator(new Table(result.data(), stoll(file_name)));
+                    cache[dir_level].emplace(it->timestamp(), it);
+                    delete file;
+                    path_name.resize(file_size);
+                }
+                path_name.resize(dir_size);
+            }
         }
-        delete[] raw;
+
+
+
     }
 
     void KeyCache::LogLevel(uint64_t level, int i) {

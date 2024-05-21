@@ -78,12 +78,6 @@ namespace LSMKV {
             }
         }
 
-//		byte random_level() {
-//			byte level = 1;
-//			while (!(gen() & 4) && ++level < MAX_LEVEL) {
-//			}
-//			return level;
-//		}
         byte random_level() {
             // Twice faster than upper
             return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rand()));

@@ -79,11 +79,12 @@ namespace LSMKV {
         bool GetOffset(const uint64_t &key, uint64_t &offset);
 
     private:
+        const Option &op;
+
         // key is timestamp
         // No need to level_order, because it also needs to keep key in order
         // otherwise it sames to this one
         // key is level , value's key is timestamp
-        Option &op = Option::getInstance();
         std::map<uint64_t, std::multimap<uint64_t, TableIterator *>> cache;
         Table *table_cache = nullptr;
 
