@@ -8,12 +8,13 @@
 #include <map>
 #include <string>
 #include <chrono>
+#include <utility>
 #include "../utils/file.h"
 
 class Performance {
 public:
 
-    Performance(const std::string &dbname) : dbname(dbname) {
+    explicit Performance(std::string dbname) : dbname(std::move(dbname)) {
         startd = std::chrono::system_clock::now();
     }
 

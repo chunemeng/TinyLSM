@@ -1,15 +1,15 @@
 #ifndef LSMKV_THREAD_H
 #define LSMKV_THREAD_H
 
+#include <functional>
 #include <thread>
 
 namespace LSMKV {
     class Thread {
     public:
-        using Function = void (*)();
+        using Function = std::function<void()>;
 
-        explicit Thread(Function function) {
-            this->func_ = function;
+        explicit Thread(Function&& function) : func_(std::move(function)) {
         };
 
         ~Thread() {

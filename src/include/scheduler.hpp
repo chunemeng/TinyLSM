@@ -44,7 +44,6 @@ namespace LSMKV {
         Queue<std::optional<Request>> request_queue_;
         /** The background thread responsible for issuing scheduled requests to the disk manager. */
         std::optional<std::thread> background_thread_;
-        std::atomic<bool> empty_{true};
     };
 }
 

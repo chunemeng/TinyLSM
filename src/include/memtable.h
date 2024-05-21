@@ -19,14 +19,14 @@ namespace LSMKV {
 		void put(key_type key, const value_type& val);
 		void put(key_type key, const Slice& val);
 		void put(key_type key, Slice&& val);
-		std::string get(key_type key) const;
+		[[nodiscard]] std::string get(key_type key) const;
 		bool del(key_type key);
         bool contains(uint64_t);
-		bool DELETED(const std::string &s);
-        bool DELETED(const Slice &s);
+		static bool DELETED(const std::string &s);
+        static bool DELETED(const Slice &s);
         char* reserve(size_t key);
 		Iterator* newIterator();
-		size_t memoryUsage() const;
+		[[nodiscard]] size_t memoryUsage() const;
 		~MemTable();
 	private:
 		friend class MemTableIterator;

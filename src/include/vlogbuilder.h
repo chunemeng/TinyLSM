@@ -10,11 +10,11 @@ namespace LSMKV {
     class VLogBuilder {
 
     public:
-        VLogBuilder(WritableFile *file) : file_(file) {};
+        explicit VLogBuilder(WritableFile *file) : file_(file) {};
 
-        void Append(uint64_t &key, Slice &value) {
+        void Append(uint64_t key, const Slice &value) {
             auto size = 15 + value.size();
-            if (size <= 65536) [[likely]] {
+            if (size <= 32768) [[likely]] {
                 auto buf = file_->WriteToBuffer(size);
                 buf[0] = magic;
                 memcpy(buf + 15, value.data(), value.size());
@@ -24,22 +24,13 @@ namespace LSMKV {
                 EncodeFixed16(buf + 1, utils::crc16(buf + 3, size - 3));
                 return;
             }
-            char *buf = new char[size];
+            auto buf = file_->WriteToBuffer(15);
             buf[0] = magic;
-            memcpy(buf + 15, value.data(), value.size());
-
             EncodeFixed64(buf + 3, key);
             EncodeFixed32(buf + 11, value.size());
-            EncodeFixed16(buf + 1, utils::crc16(buf + 3, size - 3));
+            EncodeFixed16(buf + 1, utils::crc16_prefix(buf + 3, 12, value.data(), size - 15));
             file_->Flush();
-            file_->WriteUnbuffered(buf, size);
-
-//            size_t offset = vlog.size();
-//            vlog.append(14, '\0');
-//            vlog.append(value.data(), value.size());
-//            EncodeFixed64(&vlog[offset + 2], key);
-//            EncodeFixed32(&vlog[offset + 10], value.size());
-//            EncodeFixed16(&vlog[offset], utils::crc16(&vlog[offset + 2], vlog.size() - offset - 2));
+            (file_->WriteUnbuffered(value.data(), size - 15));
         }
 
         void Drop() {

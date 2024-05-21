@@ -4,7 +4,7 @@ project(LSMKV.handout)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 
-SET(CMAKE_CXX_FLAGS "-O1 -march=native -w -ftree-vectorize")
+SET(CMAKE_CXX_FLAGS "-O1 -march=native -w -ftree-vectorize -fstrict-aliasing   -fthread-jumps -falign-functions  -falign-jumps -falign-loops  -falign-labels -fcaller-saves -fcrossjumping -fcse-follow-jumps  -fcse-skip-blocks  -fdelete-null-pointer-checks -fdevirtualize -fdevirtualize-speculatively -fexpensive-optimizations -fgcse  -fgcse-lm -fhoist-adjacent-loads -finline-small-functions -findirect-inlining")
 
 #include(FetchContent)
 #FetchContent_Declare(
@@ -51,8 +51,6 @@ set(SRC_FILES
         utils/coding.h
         utils/filename.h
         utils/file.h
-        src/include/status.h
-        src/status.cpp
         src/include/version.h
         src/include/vlogbuilder.h
         src/include/table.h
@@ -63,7 +61,7 @@ set(SRC_FILES
         src/keycache.cpp
         src/include/keycache.h
 )
-add_executable(TEST performance_test.cpp ${SRC_FILES})
+add_executable(TEST test/performance_test.cpp ${SRC_FILES})
 
 add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
         src/include/scheduler.hpp
@@ -71,3 +69,5 @@ add_executable(LSMKVC correctness.cc test.h ${SRC_FILES}
         src/include/thread.h
 )
 add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})
+
+add_executable(THROUGH test/throughput_test.cpp ${SRC_FILES})

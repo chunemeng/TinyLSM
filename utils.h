@@ -367,6 +367,46 @@ namespace utils {
         return crc;
     }
 
+    static inline uint16_t crc16_prefix(const char *prefix, size_t pre_len, const char *data, size_t len) {
+        const auto *buf = reinterpret_cast<const uint8_t *>(data);
+        uint16_t crc = 0xffff;
+        for (int i = 0; i < pre_len; ++i) {
+            crc = crc16_table[0][((crc >> 8) ^ *prefix++) & 0xff] ^ (crc << 8);
+        }
+
+        /* process individual bytes until we reach an 8-byte aligned pointer */
+        while (len && ((uintptr_t) buf & 7) != 0) {
+            crc = crc16_table[0][((crc >> 8) ^ *buf++) & 0xff] ^ (crc << 8);
+            len--;
+        }
+
+        /* fast middle processing, 8 bytes (aligned!) per loop */
+        /* clang-format off */
+        while (len >= 8) {
+            uint64_t n = *(uint64_t *) buf;
+            crc = crc16_table[7][(n & 0xff) ^ ((crc >> 8) & 0xff)] ^
+                  crc16_table[6][((n >> 8) & 0xff) ^ (crc & 0xff)] ^
+                  crc16_table[5][(n >> 16) & 0xff] ^
+                  crc16_table[4][(n >> 24) & 0xff] ^
+                  crc16_table[3][(n >> 32) & 0xff] ^
+                  crc16_table[2][(n >> 40) & 0xff] ^
+                  crc16_table[1][(n >> 48) & 0xff] ^
+                  crc16_table[0][n >> 56];
+            buf += 8;
+            len -= 8;
+        }
+        /* clang-format on */
+
+        /* process remaining bytes (can't be larger than 8) */
+        while (len) {
+            crc = crc16_table[0][((crc >> 8) ^ *buf++) & 0xff] ^ (crc << 8);
+            len--;
+        }
+
+        return crc;
+    }
+
+
     /**
      * generate crc16
      * @param data binary data used to generate crc16.

@@ -23,15 +23,12 @@ namespace LSMKV {
         // Destroys all existing entries by calling the "deleter"
         // function that was passed to the constructor.
         ~Cache() {
-            if (mmap_file_ != nullptr) {
-                delete mmap_file_;
-            }
+            delete mmap_file_;
         }
 
         void Push(MemoryReadableFile *file) {
-            if (mmap_file_ != nullptr) {
-                delete mmap_file_;
-            }
+            delete mmap_file_;
+
             this->mmap_file_ = file;
             this->offset_ = mmap_file_->GetOffset();
             this->len_ = mmap_file_->Size();

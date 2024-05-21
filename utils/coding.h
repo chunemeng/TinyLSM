@@ -4,7 +4,7 @@
 #include <bit>
 namespace LSMKV {
 	inline uint64_t DecodeFixed64(const char* ptr) {
-		const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
+		const auto* const buffer = reinterpret_cast<const uint8_t*>(ptr);
 
 		return (static_cast<uint64_t>(buffer[0])) |
 			(static_cast<uint64_t>(buffer[1]) << 8) |
@@ -17,7 +17,7 @@ namespace LSMKV {
 	}
 
 	inline uint32_t DecodeFixed32(const char* ptr) {
-		const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
+		const auto* const buffer = reinterpret_cast<const uint8_t*>(ptr);
 
 		return (static_cast<uint32_t>(buffer[0])) |
 			(static_cast<uint32_t>(buffer[1]) << 8) |
@@ -26,14 +26,14 @@ namespace LSMKV {
 	}
 
 	inline uint16_t DecodeFixed16(const char* ptr) {
-		const uint8_t* const buffer = reinterpret_cast<const uint8_t*>(ptr);
+		const auto* const buffer = reinterpret_cast<const uint8_t*>(ptr);
 
 		return (static_cast<uint32_t>(buffer[0])) |
 			(static_cast<uint32_t>(buffer[1]) << 8);
 	}
 
 	inline void EncodeFixed16(char* dst, uint16_t value) {
-		uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
+		auto* const buffer = reinterpret_cast<uint8_t*>(dst);
 		if constexpr (std::endian::native == std::endian::big) {
 			#if defined(__GNUC__) || defined(__clang__)
 				value = __builtin_bswap16(value);
@@ -49,7 +49,7 @@ namespace LSMKV {
 	}
 
 	inline void EncodeFixed32(char* dst, uint32_t value) {
-		uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
+		auto* const buffer = reinterpret_cast<uint8_t*>(dst);
 		if constexpr (std::endian::native == std::endian::big) {
 			#if defined(__GNUC__) || defined(__clang__)
 				value = __builtin_bswap32(value);
@@ -67,7 +67,7 @@ namespace LSMKV {
 
 	inline void EncodeFixed64(char* dst, uint64_t value) {
 
-		uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
+		auto* const buffer = reinterpret_cast<uint8_t*>(dst);
 		if constexpr (std::endian::native == std::endian::big) {
 			#if defined(__GNUC__) || defined(__clang__)
 				value = __builtin_bswap64(value);

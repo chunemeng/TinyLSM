@@ -18,7 +18,7 @@ namespace LSMKV {
         struct node {
             K const _key;
             V _value;
-            node * _next[1];
+            node *_next[1];
 
             node *next(const byte &level) {
                 return _next[level];
@@ -89,13 +89,13 @@ namespace LSMKV {
             return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rand()));
         }
 
-        inline byte getMaxHeight() const {
+        [[nodiscard]] inline byte getMaxHeight() const {
             return max_level;
         }
 
         node *createNode(const K &key, V &&value, const byte &level) {
             auto node_memory = arena->allocateAligned(sizeof(node) + sizeof(std::atomic<node *>) * (level - 1));
-            return new(node_memory) node(key, std::forward<V>(value));
+            return new(node_memory) node(key, std::move(value));
         }
 
         Arena *arena;
@@ -106,7 +106,7 @@ namespace LSMKV {
         public:
             explicit Iterator(const Skiplist *list) : _list(list), _cur(nullptr), _end(nullptr) {};
 
-            bool hasNext() const {
+            [[nodiscard]] bool hasNext() const {
                 return _end != _cur && _cur != nullptr;
             }
 
@@ -145,7 +145,7 @@ namespace LSMKV {
 
         explicit Skiplist(Arena *arena)
                 : arena(arena), _head(createNode(0, V(), MAX_LEVEL)), max_level(1) {
-			srand(time(0));
+            srand(time(nullptr));
             for (byte level = 0; level < MAX_LEVEL; level++) {
                 _head->setnext(level, nullptr);
             }
@@ -163,7 +163,7 @@ namespace LSMKV {
             node *n = findHelper(key, prev);
 
             if (equal(key, n)) {
-                n->_value = std::forward<V>(value);
+                n->_value = std::move(value);
                 return false;
             }
 
@@ -175,7 +175,7 @@ namespace LSMKV {
                 max_level = (height);
             }
 
-            n = createNode(key, std::forward<V>(value), height);
+            n = createNode(key, std::move(value), height);
             for (int i = 0; i < height; i++) {
                 n->setnext(i, prev[i]->next(i));
                 prev[i]->setnext(i, n);

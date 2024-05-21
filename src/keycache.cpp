@@ -12,7 +12,7 @@ namespace LSMKV {
         Slice result;
         char *raw = new char[16 * 1024];
         RandomReadableFile *file;
-        Status s;
+        bool s;
         std::string path_name = db_path + "/";
         size_t dir_size;
         size_t file_size;
@@ -26,15 +26,21 @@ namespace LSMKV {
             file_size = path_name.size();
             utils::scanDir(path_name, files);
             dir_level = atoll(&dir[6]);
+
+            if (v->NeedNewLevel(dir_level)) {
+                v->AddNewLevel(dir_level - v->GetTreeLevel());
+            }
+
             for (auto &file_name: files) {
                 path_name.append(file_name);
                 v->LoadStatus(dir_level, stoll(file_name));
                 s = NewRandomReadableFile(path_name, &file);
-                if (!s.ok()) {
+                if (!s) {
                     continue;
                 }
                 s = file->Read(0, 16 * 1024, &result, raw);
-                if (!s.ok() || result.empty()) {
+                if (!s || result.empty()) {
+                    delete file;
                     continue;
                 }
                 auto it = new TableIterator(new Table(result.data(), stoll(file_name), op));
@@ -92,7 +98,6 @@ namespace LSMKV {
             }
         }
         bool isDrop = cache[level + 1].empty();
-
 
         // store the sst with same timestamp
         std::priority_queue<std::multimap<uint64_t, TableIterator *>::iterator, std::vector<std::multimap<uint64_t, TableIterator *>::iterator>, CmpKey> que;
@@ -262,7 +267,6 @@ namespace LSMKV {
                     ++t_size;
                     // WRITE KEY AND OFFSET
                     EncodeFixed64(tmp + key_offset, wait_insert_key);
-                    auto t = DecodeFixed64(value.data());
 
                     memcpy(tmp + key_offset + 8, value.data(), value.size());
                     key_offset = key_offset + 20;
@@ -285,19 +289,28 @@ namespace LSMKV {
                 }
                 need_to_next.clear();
             }
+
             if (t_size == 0) {
+                // todo may bug in here
+                // the cache may leak
+                // need to test this
+                delete table_cache;
                 continue;
             }
+
             need_to_next.clear();
             //WRITE HEADER
             // WRITE TIMESTAMP
             EncodeFixed64(tmp, timestamp);
-            // WIRTE VALUE SIZE
+            // WIRTE PAIR SIZE
             EncodeFixed64(tmp + 8, t_size);
             // WRITE MIN KEY
             memcpy(tmp + 16, tmp + 8224, 8);
             // WRITE MAX KEY
             EncodeFixed64(tmp + 24, wait_insert_key);
+
+            memset(tmp + 32, 0, 8192);
+            CreateFilter(tmp + 8224, t_size, 20, tmp + 32);
 
             tmp_slice = Slice(tmp, t_size * 20 + 8224);
             // todo bug when use emplace_back
@@ -331,12 +344,14 @@ namespace LSMKV {
         auto it = key_map.begin();
         TableIterator *table;
         for (auto &level: cache) {
-            for (auto &table_pair: level.second) {
+            for (auto &table_pair: std::ranges::reverse_view(level.second)) {
                 table = table_pair.second;
                 table->seek(K1, K2);
                 while (table->hasNext()) {
-                    key_map.insert(std::make_pair(table->key(),
-                                                  std::string{table->value().data(), table->value().size()}));
+                    // First insert the key with larger timestamp
+                    // if meet the same key, emplace will fail
+                    key_map.emplace(table->key(),
+                                    std::string{table->value().data(), table->value().size()});
                     table->next();
                 }
             }

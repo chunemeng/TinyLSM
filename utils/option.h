@@ -4,14 +4,20 @@ namespace LSMKV {
     class Option {
     private:
         explicit Option(bool isFilter = true) : isFilter(isFilter) {}
+
         ~Option() = default;
-        Option& operator=(const Option& option) = delete;
-        Option(const Option& option) = delete;
+
+        bool isIndex = true;
         bool isFilter = true;
+        static constexpr int bloom_size = 8192;
     public:
-        [[nodiscard]] bool getIsFilter() const{
+        [[nodiscard]] bool getIsFilter() const {
             return isFilter;
         }
+
+        Option &operator=(const Option &option) = delete;
+
+        Option(const Option &option) = delete;
 
         static Option &getInstance() {
             static Option option;

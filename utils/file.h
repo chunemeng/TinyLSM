@@ -3,7 +3,6 @@
 
 #include <fcntl.h>
 #include "slice.h"
-#include "../src/include/status.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -79,31 +78,31 @@ namespace LSMKV {
             close(fd_);
         }
 
-        Status ReadAll(Slice *result, char *scratch) {
-            struct stat statbuf;
-            Status status;
+        bool ReadAll(Slice *result, char *scratch) {
+            struct stat statbuf{};
+            bool status = true;
             stat(filename_.c_str(), &statbuf);
             size_t length = statbuf.st_size;
             if (length == 0) {
-                return Status::IOError("empty");
+                return false;
             }
             ::ssize_t read_size = ::read(fd_, scratch, length);
             if (read_size < 0) {  // Read error.
-                status = Status::IOError(filename_);
+                status = false;
             }
             *result = Slice(scratch, read_size);
-            return Status::OK();
+            return status;
         }
 
-        Status Read(size_t n, Slice *result, char *scratch) {
-            Status status;
+        bool Read(size_t n, Slice *result, char *scratch) {
+            bool status = true;
             while (true) {
                 ::ssize_t read_size = ::read(fd_, scratch, n);
                 if (read_size < 0) {  // Read error.
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
-                    status = Status::IOError(filename_);
+                    status = false;
                     break;
                 }
                 *result = Slice(scratch, read_size);
@@ -112,19 +111,19 @@ namespace LSMKV {
             return status;
         }
 
-        Status MoveTo(uint64_t n) {
+        bool MoveTo(uint64_t n) {
             if (::lseek(fd_, n, SEEK_SET) == static_cast<off_t>(-1)) {
-                return Status::IOError(filename_);
+                return false;
             }
-            return Status::OK();
+            return true;
         }
 
 
-        Status Skip(uint64_t n) {
+        bool Skip(uint64_t n) {
             if (::lseek(fd_, n, SEEK_CUR) == static_cast<off_t>(-1)) {
-                return Status::IOError(filename_);
+                return false;
             }
-            return Status::OK();
+            return true;
         }
 
     private:
@@ -132,16 +131,16 @@ namespace LSMKV {
         const std::string filename_;
     };
 
-    static inline Status NewSequentialFile(const std::string &filename,
-                                           SequentialFile **result) {
+    static inline bool NewSequentialFile(const std::string &filename,
+                                         SequentialFile **result) {
         int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
         if (fd < 0) {
             *result = nullptr;
-            return Status::IOError(filename);
+            return false;
         }
 
         *result = new SequentialFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 
     class RandomReadableFile {
@@ -155,20 +154,19 @@ namespace LSMKV {
             ::close(fd_);
         }
 
-        Status Read(uint64_t offset, size_t n, Slice *result,
-                    char *scratch) const {
+        bool Read(uint64_t offset, size_t n, Slice *result,
+                  char *scratch) const {
             int fd = fd_;
             fd = ::open(filename_.c_str(), O_RDONLY | kOpenBaseFlags);
             if (fd < 0) {
-                return Status::IOError("Failed to open file");
+                return false;
             }
 
-            Status status;
+            bool status = true;
             ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
             *result = Slice(scratch, (read_size < 0) ? 0 : read_size);
             if (read_size < 0) {
-                // An error: return a non-ok status.
-                status = Status::IOError("Failed to read from file");
+                status = false;
             }
             assert(fd != fd_);
             ::close(fd);
@@ -182,19 +180,19 @@ namespace LSMKV {
 
     class WritableFile {
     private:
-        Status FlushBuffer() {
-            Status status = WriteUnbuffered(buf, pos);
+        bool FlushBuffer() {
+            bool status = WriteUnbuffered(buf, pos);
             pos = 0;
             return status;
         }
 
-        static Status SyncFd(int fd, const std::string &fd_path) {
+        static bool SyncFd(int fd, const std::string &fd_path) {
             bool sync_success = ::fdatasync(fd) == 0;
 
             if (sync_success) {
-                return Status::OK();
+                return true;
             }
-            return Status::IOError(fd_path);
+            return false;
         }
 
         char buf[kWritableFileBufferSize];
@@ -212,7 +210,7 @@ namespace LSMKV {
             return buf + pos - size;
         }
 
-        Status WriteUnbuffered(const Slice &s) {
+        bool WriteUnbuffered(const Slice &s) {
             auto size = s.size();
             auto data = s.data();
             while (size > 0) {
@@ -221,27 +219,27 @@ namespace LSMKV {
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
-                    return Status::IOError("WriteUnbuffered");
+                    return false;
                 }
                 data += write_result;
                 size -= write_result;
             }
-            return Status::OK();
+            return true;
         }
 
-        Status WriteUnbuffered(const char *data, size_t size) {
+        bool WriteUnbuffered(const char *data, size_t size) {
             while (size > 0) {
                 ssize_t write_result = ::write(_fd, data, size);
                 if (write_result < 0) {
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
-                    return Status::IOError("WriteUnbuffered");
+                    return false;
                 }
                 data += write_result;
                 size -= write_result;
             }
-            return Status::OK();
+            return true;
         }
 
 
@@ -262,7 +260,7 @@ namespace LSMKV {
             }
         }
 
-        Status Append(const Slice &data) {
+        bool Append(const Slice &data) {
             size_t write_size = data.size();
             const char *write_data = data.data();
 
@@ -272,12 +270,12 @@ namespace LSMKV {
             write_size -= copy_size;
             pos += copy_size;
             if (write_size == 0) {
-                return Status::OK();
+                return true;
             }
 
             // Can't fit in buffer, so need to do at least one write.
-            Status status = FlushBuffer();
-            if (!status.ok()) {
+            bool status = FlushBuffer();
+            if (!status) {
                 return status;
             }
 
@@ -285,28 +283,28 @@ namespace LSMKV {
             if (write_size < kWritableFileBufferSize) {
                 std::memcpy(buf, write_data, write_size);
                 pos = write_size;
-                return Status::OK();
+                return true;
             }
             return WriteUnbuffered(write_data, write_size);
         }
 
-        Status Close() {
-            Status status = FlushBuffer();
+        bool Close() {
+            bool status = FlushBuffer();
             const int close_result = ::close(_fd);
-            if (close_result < 0 && status.ok()) {
-                status = Status::IOError(filename);
+            if (close_result < 0 && status) {
+                status = false;
             }
             _fd = -1;
             return status;
         }
 
-        Status Flush() {
+        bool Flush() {
             return FlushBuffer();
         }
 
-        Status Sync() {
-            Status status = FlushBuffer();
-            if (!status.ok()) {
+        bool Sync() {
+            bool status = FlushBuffer();
+            if (!status) {
                 return status;
             }
 
@@ -317,13 +315,13 @@ namespace LSMKV {
 
     class WritableNoBufFile {
     private:
-        static Status SyncFd(int fd, const std::string &fd_path) {
+        static bool SyncFd(int fd, const std::string &fd_path) {
             bool sync_success = ::fdatasync(fd) == 0;
 
             if (sync_success) {
-                return Status::OK();
+                return true;
             }
-            return Status::IOError(fd_path);
+            return false;
         }
 
         size_t pos;
@@ -332,7 +330,7 @@ namespace LSMKV {
         const std::string filename;
         const std::string dirname;
     public:
-        Status WriteUnbuffered(const Slice &s) {
+        bool WriteUnbuffered(const Slice &s) {
             auto size = s.size();
             auto data = s.data();
             while (size > 0) {
@@ -341,27 +339,27 @@ namespace LSMKV {
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
-                    return Status::IOError("WriteUnbuffered");
+                    return false;
                 }
                 data += write_result;
                 size -= write_result;
             }
-            return Status::OK();
+            return true;
         }
 
-        Status WriteUnbuffered(const char *data, size_t size) {
+        bool WriteUnbuffered(const char *data, size_t size) {
             while (size > 0) {
                 ssize_t write_result = ::write(_fd, data, size);
                 if (write_result < 0) {
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
-                    return Status::IOError("WriteUnbuffered");
+                    return false;
                 }
                 data += write_result;
                 size -= write_result;
             }
-            return Status::OK();
+            return true;
         }
 
 
@@ -384,15 +382,15 @@ namespace LSMKV {
         return ::access(filename.c_str(), F_OK) == 0;
     }
 
-    static inline Status NewRandomReadableFile(const std::string &filename, RandomReadableFile **result) {
+    static inline bool NewRandomReadableFile(const std::string &filename, RandomReadableFile **result) {
         *result = nullptr;
         int fd = ::open(filename.c_str(), O_RDONLY | kOpenBaseFlags);
         if (fd < 0) {
-            return Status::IOError(filename);
+            return false;
         }
 
         *result = new RandomReadableFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 
     static inline off64_t GetFileSize(const std::string &filePath) {
@@ -443,51 +441,53 @@ namespace LSMKV {
         return false;
     }
 
-    static inline Status NewWritableNoBufFile(const std::string &filename, WritableNoBufFile **result) {
+    static inline bool NewWritableNoBufFile(const std::string &filename, WritableNoBufFile **result) {
         int fd = ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
         if (fd < 0) {
             *result = nullptr;
+            return false;
         }
 
         *result = new WritableNoBufFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 
-    static inline Status NewWritableFile(const std::string &filename, WritableFile **result) {
+    static inline bool NewWritableFile(const std::string &filename, WritableFile **result) {
         int fd = ::open(filename.c_str(), O_TRUNC | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
         if (fd < 0) {
             *result = nullptr;
+            return false;
         }
 
         *result = new WritableFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 
-    static inline Status NewAppendableFile(const std::string &filename,
-                                           WritableFile **result) {
+    static inline bool NewAppendableFile(const std::string &filename,
+                                         WritableFile **result) {
         int fd = ::open(filename.c_str(),
                         O_APPEND | O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
         if (fd < 0) {
             *result = nullptr;
-            return Status::IOError(filename);
+            return false;
         }
 
         *result = new WritableFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 
-    static inline Status NewWriteAtStartFile(const std::string &filename,
-                                             WritableNoBufFile **result) {
+    static inline bool NewWriteAtStartFile(const std::string &filename,
+                                           WritableNoBufFile **result) {
         int fd = ::open(filename.c_str(),
                         O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
         ::lseek(fd, 0, SEEK_SET);
         if (fd < 0) {
             *result = nullptr;
-            return Status::IOError(filename);
+            return false;
         }
 
         *result = new WritableNoBufFile(filename, fd);
-        return Status::OK();
+        return true;
     }
 }
 

@@ -1,13 +1,5 @@
 #include <utility>
 #include "include/memtable.h"
-#include "../utils/coding.h"
-
-//template<class T>
-//static Slice SliceHelper(const T& t) {
-//	std::stringstream tmp;
-//	tmp << t;
-//	return { tmp.str().c_str(), sizeof(T) };
-//}
 
 namespace LSMKV {
 	class MemTableIterator : public Iterator {
@@ -20,7 +12,7 @@ namespace LSMKV {
 
 		~MemTableIterator() override = default;
 
-		bool hasNext() const override {
+		[[nodiscard]] bool hasNext() const override {
 			return _iter.hasNext();
 		}
 
@@ -41,10 +33,10 @@ namespace LSMKV {
 				list.emplace_back(key(), _iter.value().toString());
 			}
 		}
-		uint64_t key() const override {
+		[[nodiscard]] uint64_t key() const override {
 			return _iter.key();
 		}
-		Slice value() const override {
+		[[nodiscard]] Slice value() const override {
 			return _iter.value();
 		}
 
@@ -85,8 +77,7 @@ namespace LSMKV {
 		size += table.insert(key, Slice(buf, val.size()));
 	}
 
-	MemTable::~MemTable() {
-	}
+	MemTable::~MemTable() = default;
 
 	// NEED TO STORE VALUE
 	void MemTable::put(key_type key, const Slice& val) {

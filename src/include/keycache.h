@@ -39,7 +39,7 @@ namespace LSMKV {
 
         void Merge(uint64_t file_no,
                    uint64_t level,
-                   uint64_t timestamp,bool isDrop,
+                   uint64_t timestamp, bool isDrop,
                    std::multimap<uint64_t, TableIterator *> &wait_to_merge,
                    std::vector<Slice> &need_to_write,
                    std::set<uint64_t> &file_location,
@@ -64,9 +64,8 @@ namespace LSMKV {
         std::string get(const uint64_t &key);
 
         ~KeyCache() {
-            if (table_cache != nullptr) {
-                delete table_cache;
-            }
+            delete table_cache;
+
             for (auto &level: cache) {
                 for (auto &it: level.second) {
                     delete it.second;
@@ -75,7 +74,7 @@ namespace LSMKV {
             cache.clear();
         }
 
-        bool empty() const;
+        [[nodiscard]] bool empty() const;
 
         bool GetOffset(const uint64_t &key, uint64_t &offset);
 
