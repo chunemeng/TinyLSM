@@ -27,31 +27,45 @@ private:
 
         phase();
 
-        for (i = 0; i < max; ++i) {
-            store.get(i);
-        }
-        phase();
-
+//        for (i = 0; i < max; ++i) {
+//            store.get(i);
+//        }
+//        phase();
         // Test scan
-        std::list<std::pair<uint64_t, std::string>> list_stu;
-
-        store.scan(0, max / 2 - 1, list_stu);
-        list_stu.clear();
-        for (int i = 0; i < 20; ++i) {
-            auto start = gen() % 500000;
-            auto len = gen() % 100000 + 1;
-            store.scan(start, start + len, list_stu);
-            list_stu.clear();
-        }
-
-        phase();
-
-        for (i = max; i > 0; --i) {
-            EXPECT(1, store.del(i - 1));
-        }
-        phase();
+//        std::list<std::pair<uint64_t, std::string>> list_stu;
+//
+//        store.scan(0, max / 2 - 1, list_stu);
+//        list_stu.clear();
+//        for (int i = 0; i < 20; ++i) {
+//            auto start = gen() % 500000;
+//            auto len = gen() % 100000 + 1;
+//            store.scan(start, start + len, list_stu);
+//            list_stu.clear();
+//        }
+//
+//        phase();
+//
+//        for (i = max; i > 0; --i) {
+//            EXPECT(1, store.del(i - 1));
+//        }
+//        phase();
 
         report();
+    }
+
+    void bloom_test() {
+        uint64_t i;
+        {
+            for (i = 0; i < LARGE_TEST_MAX; i += 2) {
+                store.put(i, std::string(value_size, 's'));
+            }
+        }
+        phase();
+
+        for (int i = 1; i < LARGE_TEST_MAX; i += 2 ) {
+            EXPECT(true, store.get(i).empty());
+        }
+        phase();
     }
 
     void put_test() {
@@ -79,16 +93,17 @@ public:
         std::cout << "KVStore Performance Test" << std::endl;
 
         store.reset();
+        bloom_test();
 
-        put_test();
+//        put_test();
 
         // std::cout << "[Simple Test]" << std::endl;
         // regular_test(SIMPLE_TEST_MAX);
 
-        // store.reset();
-
-        // std::cout << "[Large Test]" << std::endl;
-        // regular_test(LARGE_TEST_MAX);
+//        store.reset();
+//
+//        std::cout << "[Large Test]" << std::endl;
+//        regular_test(LARGE_TEST_MAX);
     }
 };
 

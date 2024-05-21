@@ -80,13 +80,12 @@ void KVStore::put(uint64_t key, const std::string &s) {
             imm = nullptr;
             delete builder_->it_;
         }
-        writeLevel0Table(mem.get());
-        mem = std::make_unique<LSMKV::MemTable>();
-        // std::promise<bool> promise;
-        // future_ = promise.get_future();
-        // genBuilder();
-        // cache->Drop();
-        // scheduler_.Schedule({*builder_, std::move(promise)});
+
+        std::promise<bool> promise;
+        future_ = promise.get_future();
+        genBuilder();
+        cache->Drop();
+        scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
 }
@@ -377,13 +376,12 @@ void KVStore::gc(uint64_t chunk_size) {
             delete builder_->it_;
             imm = nullptr;
         }
-                writeLevel0Table(mem.get());
-        mem = std::make_unique<LSMKV::MemTable>();
-        // std::promise<bool> promise;
-        // future_ = promise.get_future();
-        // genBuilder();
-        // cache->Drop();
-        // scheduler_.Schedule({*builder_, std::move(promise)});
+
+        std::promise<bool> promise;
+        future_ = promise.get_future();
+        genBuilder();
+        cache->Drop();
+        scheduler_.Schedule({*builder_, std::move(promise)});
     }
 }
 

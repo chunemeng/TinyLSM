@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "slice.h"
+#include "./coding.h"
 #include "../MurmurHash3.h"
 
 namespace LSMKV {

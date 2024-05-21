@@ -22,11 +22,14 @@ namespace LSMKV {
         uint64_t dir_level;
 
         if constexpr (LSMKV::Option::isIndex) {
-            if (Option::getIsIndex() && Option::getIsFilter()) {
-                raw = std::make_unique<char[]>(16 * 1024);
-            } else {
-                raw = std::make_unique<char[]>(LSMKV::Option::key_size_);
-            }
+//            int offset;
+//            if constexpr (LSMKV::Option::isFilter) {
+//                offset = 0;
+//                raw = std::make_unique<char[]>(16 * 1024);
+//            } else {
+//                offset = LSMKV::Option::bloom_size_ + 32;
+//                raw = std::make_unique<char[]>(LSMKV::Option::key_size_);
+//            }
 
             for (auto &dir: dirs) {
                 files.clear();
@@ -95,7 +98,6 @@ namespace LSMKV {
                 path_name.resize(dir_size);
             }
         }
-
 
 
     }
