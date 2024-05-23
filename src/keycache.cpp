@@ -151,7 +151,7 @@ namespace LSMKV {
 
         std::set<uint64_t> file_location;
         // STRANGE BUG THAT CANT INSERT INTO UNORDERED_SET
-        // key is level to fix bug in the same timestamp
+        // key is level, to fix bug in the same timestamp
         std::multimap<uint64_t, TableIterator *> wait_to_merge;
         // add new level
         if (level > cache.size()) {
@@ -299,6 +299,9 @@ namespace LSMKV {
                 key_timestamp = 0;
                 bool isSkip = false;
                 for (auto it = wait_to_merge.begin(); it != wait_to_merge.end(); it++) {
+                    if (wait_to_merge.size() > 3) {
+                        int h = 0;
+                    }
                     auto rit = (*it).second;
                     // IF THE KEY IS SMALLER THAN STORED IN WAIT_INSERT_KEY
                     // UPDATE TO THIS ONE
@@ -317,6 +320,11 @@ namespace LSMKV {
 
                         // BUG: KEY_TIMESTAMP MAY EQUAL RIT->TIMESTAMP()
                         // already fixed by set ordered by reverse level
+
+                        // after a mouth, i read it again, clearly finds this just a shit
+                        // this is just access last level first
+                        // so in there only the upper timestamp will update
+                        // and will ignore the timestamp if is equal
                         if (key_timestamp < rit->timestamp()) {
                             key_timestamp = rit->timestamp();
                             value = rit->value();
