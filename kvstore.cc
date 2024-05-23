@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-#define time_perf
+//#define time_perf
 #define MB (1024 * 1024)
 
 void KVStore::writeLevel0(KVStore *kvStore) {

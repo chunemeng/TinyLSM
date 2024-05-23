@@ -36,12 +36,13 @@ namespace LSMKV {
             if (v->LevelOver(level)) {
                 compaction = true;
             }
-            key_buf = kc->ReserveCache(meta.size * 20 + 8224, v->fileno);
+            int bloom_length = bloom_size + 32;
+            key_buf = kc->ReserveCache(meta.size * 20 + bloom_length, v->fileno);
 
             // NEED TO CLEAR FOR BLOOM_FILTER
-            memset(key_buf + 32, 0, 8192);
+            memset(key_buf + 32, 0, bloom_length - 32);
 
-            key_offset = 8224;
+            key_offset = bloom_length;
 
             meta.smallest = iter->key();
             uint64_t key;
@@ -69,8 +70,8 @@ namespace LSMKV {
             EncodeFixed64(key_buf + 16, meta.smallest);
             EncodeFixed64(key_buf + 24, meta.largest);
 
-            CreateFilter(key_buf + 8224, meta.size, 20, key_buf + 32);
-            file->WriteUnbuffered(key_buf, 8224 + meta.size * 20);
+            CreateFilter(key_buf + bloom_length, meta.size, 20, key_buf + 32);
+            file->WriteUnbuffered(key_buf, bloom_length + meta.size * 20);
 
             kc->PushCache(key_buf, Option::getInstance());
 
@@ -128,24 +129,27 @@ namespace LSMKV {
         WritableNoBufFile *file;
         auto dbname = v->DBName();
         const char *tmp;
+        auto& scheduler = v->write_scheduler_;
         for (auto &s: need_to_write) {
-            NewWritableNoBufFile(SSTFilePath(dbname, level + 1, v->fileno++), &file);
-//            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
-            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;
-            size_t pod = s.size() - (num_chunks - 1) * CHUNK_SIZE;
-            tmp = s.data();
-            for (auto index = 1; index < num_chunks; ++index) {
-                file->WriteUnbuffered(tmp, CHUNK_SIZE);
-                tmp += CHUNK_SIZE;
-            }
-            assert(pod != 0);
-            if (pod != 0) {
-                file->WriteUnbuffered(tmp, pod);
-            }
-
-//            bool f = file->WriteUnbuffered(s.data(), s.size());
-            delete file;
+            scheduler.Schedule({SSTFilePath(dbname, level + 1, v->fileno++), s});
+//            NewWritableNoBufFile(, &file);
+////            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
+//            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;
+//            size_t pod = s.size() - (num_chunks - 1) * CHUNK_SIZE;
+//            tmp = s.data();
+//            for (auto index = 1; index < num_chunks; ++index) {
+//                file->WriteUnbuffered(tmp, CHUNK_SIZE);
+//                tmp += CHUNK_SIZE;
+//            }
+//            assert(pod != 0);
+//            if (pod != 0) {
+//                file->WriteUnbuffered(tmp, pod);
+//            }
+//
+////            bool f = file->WriteUnbuffered(s.data(), s.size());
+//            delete file;
         }
+        scheduler.WaitTasks();
         return true;
     }
 

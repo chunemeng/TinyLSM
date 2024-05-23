@@ -14,21 +14,23 @@ private:
         std::string s(value_size, 's');
         {
             for (i = 0; i < max; ++i) {
-                store.put(i, s);
+                store.put(i * 10, s);
             }
         }
         EXPECT(true, true);
         phase();
 
-        for (i = 0; i < 2 * max; ++i) {
-            auto genn = gen();
-            auto gene = genn % 10000;
-            if (gene & 1) {
-                store.get(gene);
+        for (i = 0; i < 100000; ++i) {
+            auto rand = gen();
+            auto gnn = rand % 1000000;
+            if (!(rand & 10)) {
+                store.get(gnn * 1000);
             } else {
-                store.get(genn);
+                store.get((gnn % 1000 ? gnn : gnn + 1) * 1000);
             }
         }
+        EXPECT(true, true);
+        phase();
 
         report();
     }

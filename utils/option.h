@@ -1,8 +1,6 @@
 #ifndef OPTION_H
 #define OPTION_H
 
-#include "./bloomfilter.h"
-
 namespace LSMKV {
     struct Option {
         Option() = default;
@@ -13,10 +11,10 @@ namespace LSMKV {
         // because no index is complex when compaction
         static constexpr bool isIndex = true;
         static constexpr bool isFilter = true;
-        static constexpr int bloom_size_ = bloom_size;
-        static constexpr int key_size_ = 16 * 1024 - bloom_size_ - 32;
-        static_assert((key_size_) % 20 == 0);
-        static constexpr int pair_size_ = (key_size_) / 20;
+        static constexpr int pair_size_ = 408;
+        static constexpr int key_size_ = pair_size_ * 20;
+        static constexpr int bloom_size_ = 16 * 1024 - key_size_ - 32;
+        static_assert(bloom_size_ > 0);
 
         [[nodiscard]] static bool getIsFilter() {
             return isFilter;
@@ -27,7 +25,7 @@ namespace LSMKV {
         }
 
         [[nodiscard]] static int getBloomSize() {
-            return bloom_size;
+            return bloom_size_;
         }
 
         Option &operator=(const Option &option) = delete;

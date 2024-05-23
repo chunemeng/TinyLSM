@@ -4,13 +4,94 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <functional>
 #include <set>
+#include <thread>
+#include <optional>
+#include <future>
 #include "../../utils/file.h"
 #include "../../utils/coding.h"
 #include "../../utils/filename.h"
 #include "../../utils.h"
+#include "queue.hpp"
 
 namespace LSMKV {
+
+    class WriteScheduler {
+    public:
+        struct Request {
+            Request(std::string &&s, Slice sli) : file_name(std::move(s)), slice(sli) {
+
+            }
+
+            Request(Request &&r) noexcept {
+                this->file_name = (std::move(r.file_name));
+                this->slice = r.slice;
+            }
+
+            Request &operator=(Request &&r) noexcept {
+                this->file_name = (std::move(r.file_name));
+                this->slice = r.slice;
+                return *this;
+            }
+
+            std::string file_name;
+            Slice slice;
+        };
+
+        explicit WriteScheduler(int size) {
+            for (int i = 0; i < size; i++) {
+                background_thread_.emplace_back([&] { StartSchedule(); });
+            }
+        }
+
+        ~WriteScheduler() {
+            for (int i = 0; i < background_thread_.size(); i++) {
+                request_queue_.push(std::nullopt);
+            }
+            background_thread_.clear();
+        }
+
+        void Schedule(Request r) {
+            ++count;
+            request_queue_.push(std::move(r));
+        }
+
+        void StartSchedule() {
+            std::optional<Request> req;
+            WritableNoBufFile *file;
+            while ((req = std::move(request_queue_.pop())) != std::nullopt) {
+                const Slice &s = req->slice;
+                NewWritableNoBufFile(req->file_name, &file);
+                file->WriteUnbuffered(s.data(), s.size());
+                delete file;
+
+                --count;
+                if (!count) {
+                    condition_.notify_one();
+                }
+            }
+        };
+
+        void WaitTasks() {
+            if (count == 0) {
+                return;
+            }
+            std::unique_lock<std::mutex> lock(latch_);
+            condition_.wait(lock, [this] {
+                return count == 0;
+            });
+        }
+
+    private:
+        Queue<std::optional<Request>> request_queue_;
+        /** The background thread responsible for issuing scheduled requests to the disk manager. */
+        std::vector<std::jthread> background_thread_;
+        std::atomic<int> count{0};
+        std::mutex latch_;
+        std::condition_variable condition_;
+    };
+
     struct Version {
         explicit Version(const std::string &dbname) : filename(VersionFileName(dbname)) {
             // read from current file
@@ -63,8 +144,9 @@ namespace LSMKV {
         }
 
         void reset() {
+            write_scheduler_.WaitTasks();
             fileno = 0;
-            timestamp = 0;
+            timestamp = 1;
             head = 0;
             tail = 0;
             max_level = 7;
@@ -145,6 +227,7 @@ namespace LSMKV {
             return status[level];
         }
 
+        WriteScheduler write_scheduler_{3};
         std::string filename;
         uint64_t fileno = 0;
         uint64_t timestamp = 1;
@@ -152,7 +235,6 @@ namespace LSMKV {
         uint64_t tail = 0;
         uint64_t max_level = 7;
         std::vector<std::set<uint64_t>> status;
-
     };
 }
 

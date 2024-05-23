@@ -29,11 +29,11 @@ public:
         } else {
             num[name] = num[name] + 1;
         }
-        start[name] = std::chrono::system_clock::now();
+        start[name] = std::chrono::high_resolution_clock::now();
     }
 
     void EndTest(const std::string &name) {
-        auto end = std::chrono::system_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
         auto it = times.find(name);
 
         auto duration = duration_cast<std::chrono::duration<double, std::micro>>(end - start[name]);
@@ -58,9 +58,9 @@ public:
 
 private:
     std::string dbname;
-    decltype(std::chrono::system_clock::now()) startd;
+    decltype(std::chrono::high_resolution_clock::now()) startd;
     std::map<std::string, int> num;
-    std::map<std::string, decltype(std::chrono::system_clock::now())> start;
+    std::map<std::string, decltype(std::chrono::high_resolution_clock::now())> start;
     std::map<std::string, double> times;
 };
 

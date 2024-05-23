@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <cassert>
+
 namespace LSMKV {
 	class Slice {
 	public:
