@@ -22,6 +22,12 @@ SET(CMAKE_CXX_FLAGS "-O1 -march=native -w -ftree-vectorize -fstrict-aliasing   -
 #
 #include(GoogleTest)
 #gtest_discover_tests(SRC_TEST)
+
+add_subdirectory("third_party/googletest")
+add_subdirectory("third_party/benchmark")
+
+
+
 add_custom_target(clear
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/data
         COMMENT "Cleaning up..."
@@ -73,3 +79,11 @@ add_executable(LSMKVP persistence.cc test.h ${SRC_FILES})
 add_executable(Put test/throughput_test.cpp ${SRC_FILES})
 
 add_executable(Get test/random_get_test.cpp ${SRC_FILES})
+
+add_executable(Bloom test/bloom_test.cc test/testutil.cc test/testutil.h ${SRC_FILES})
+
+add_executable(DBBench benchmark/dbbench.cpp test/testutil.cc test/testutil.h ${SRC_FILES})
+
+target_link_libraries(Bloom gtest gmock gtest_main gmock_main)
+
+target_link_libraries(DBBench benchmark benchmark_main)

@@ -28,12 +28,6 @@ private:
         for (i = 0; i < max; ++i) {
             store.put(i, std::string(i + 1, 's'));
             EXPECT(std::string(i + 1, 's'), store.get(i));
-//            for (int j = 0; j < i; ++j) {
-//                if (std::string(j + 1, 's') != store.get(j)) {
-//                    std::cout << j << std::endl;
-//                    break;
-//                }
-//            }
         }
         phase();
 
@@ -42,7 +36,7 @@ private:
             EXPECT(std::string(i + 1, 's'), store.get(i));
         phase();
 
-        // Test scan
+//        Test scan
         std::list<std::pair<uint64_t, std::string>> list_ans;
         std::list<std::pair<uint64_t, std::string>> list_stu;
 
@@ -70,17 +64,20 @@ private:
 
         phase();
 
-        // Test deletions
+//         Test deletions
         for (i = 0; i < max; i += 2) {
             EXPECT(true, store.del(i));
         }
 
-        for (i = 0; i < max; ++i)
+        for (i = 0; i < max; ++i) {
+            auto g = store.get(i);
             EXPECT((i & 1) ? std::string(i + 1, 's') : not_found,
-                   store.get(i));
+                   g);
+        }
 
-        for (i = 1; i < max; ++i)
+        for (i = 1; i < max; ++i) {
             EXPECT(i & 1, store.del(i));
+        }
 
         phase();
 

@@ -24,24 +24,20 @@ namespace LSMKV {
         explicit Table(const char *tmp, const uint64_t &file_no) {
             timestamp = DecodeFixed64(tmp);
             this->file_no = file_no;
-//            if constexpr (!LSMKV::Option::isIndex) {
-//                return;
-//            }
-
             uint64_t size = DecodeFixed64(tmp + 8);
-            uint64_t offset = bloom_size;
             sst.reserve(size);
             char *buf;
             if ((isFilter = LSMKV::Option::isFilter)) {
                 buf = arena.allocate(size * 20 + bloom_size);
+                bloom = Slice(buf, bloom_size);
             } else {
                 buf = arena.allocate(size * 20);
             }
-            bloom = Slice(buf, 8192);
 
             // NO NEED TO COPY HEADER
             // IF OPEN FILTER COPY IT
-            memcpy(buf, tmp + 32 + !isFilter * 8192, (isFilter ? 8192 : 0) + size * 20);
+            memcpy(buf, tmp + 32 + !isFilter * bloom_size, (isFilter ? bloom_size : 0) + size * 20);
+            uint64_t offset = isFilter * bloom_size;
 
             // TODO MAY NEED COMPARE!!
             for (uint64_t i = 0; i < size * 20; i += 20) {
@@ -52,7 +48,7 @@ namespace LSMKV {
 
         void pushCache(const char *tmp) {
             if ((isFilter = LSMKV::Option::isFilter)) {
-                bloom = Slice(tmp + 32, 8192);
+                bloom = Slice(tmp + 32, bloom_size);
             }
             timestamp = DecodeFixed64(tmp);
             uint64_t size = DecodeFixed64(tmp + 8);

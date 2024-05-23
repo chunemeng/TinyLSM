@@ -1,12 +1,16 @@
 #include "../test.h"
 
-class SmallTest : public Test {
+class PerfTest : public Test {
 private:
     const uint64_t SIMPLE_TEST_MAX = 512;
-    const uint64_t LARGE_TEST_MAX = 1000000;
-    const int value_size = 5120;
+    const uint64_t LARGE_TEST_MAX = 10000000;
+    static constexpr int value_size = 8;
     long aver_value_size = 0;
     std::mt19937 gen;
+    uint64_t curr = 0;
+    std::string ss{value_size, 's'};
+
+
 
     void regular_test(uint64_t max) {
         uint64_t i;
@@ -26,12 +30,12 @@ private:
         }
 
         phase();
-
+//
 //        for (i = 0; i < max; ++i) {
 //            store.get(i);
 //        }
 //        phase();
-        // Test scan
+////         Test scan
 //        std::list<std::pair<uint64_t, std::string>> list_stu;
 //
 //        store.scan(0, max / 2 - 1, list_stu);
@@ -62,7 +66,7 @@ private:
         }
         phase();
 
-        for (int i = 1; i < LARGE_TEST_MAX; i += 2 ) {
+        for (int i = 1; i < LARGE_TEST_MAX; i += 2) {
             EXPECT(true, store.get(i).empty());
         }
         phase();
@@ -83,27 +87,33 @@ private:
     }
 
 public:
-    SmallTest(const std::string &dir, const std::string &vlog, bool v = true)
+    PerfTest(const std::string &dir, const std::string &vlog, bool v = true)
             : Test(dir, vlog, v) {
         std::random_device rd;
         gen = std::mt19937(rd());
+    }
+    void put(int length) {
+        for (int i = 0; i < length; i++) {
+            store.put(length + curr, ss);
+        }
+        curr += length;
     }
 
     void start_test(void *args = NULL) override {
         std::cout << "KVStore Performance Test" << std::endl;
 
         store.reset();
-        bloom_test();
+//        bloom_test();
 
 //        put_test();
 
-        // std::cout << "[Simple Test]" << std::endl;
-        // regular_test(SIMPLE_TEST_MAX);
+        std::cout << "[Simple Test]" << std::endl;
+        regular_test(SIMPLE_TEST_MAX);
 
-//        store.reset();
-//
-//        std::cout << "[Large Test]" << std::endl;
-//        regular_test(LARGE_TEST_MAX);
+        store.reset();
+
+        std::cout << "[Large Test]" << std::endl;
+        regular_test(LARGE_TEST_MAX);
     }
 };
 
@@ -116,7 +126,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
     std::cout.flush();
 
-    SmallTest test("./data", "./data/vlog", verbose);
+    PerfTest test("./data", "./data/vlog", verbose);
 
     test.start_test();
 
