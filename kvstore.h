@@ -61,8 +61,9 @@ private:
 
 public:
     KVStore(const std::string &dir, const std::string &vlog);
+  KVStore();
 
-    ~KVStore();
+  ~KVStore();
 
     void put(uint64_t key, const std::string &s) override;
 

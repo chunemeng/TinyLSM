@@ -80,7 +80,8 @@ add_executable(Put test/throughput_test.cpp ${SRC_FILES})
 
 add_executable(Get test/random_get_test.cpp ${SRC_FILES})
 
-add_executable(Bloom test/bloom_test.cc test/testutil.cc test/testutil.h ${SRC_FILES})
+add_executable(Bloom test/bloom_test.cc test/testutil.cc test/testutil.h ${SRC_FILES}
+        test/same_timestamp_test.cpp)
 
 add_executable(DBBench benchmark/dbbench.cpp test/testutil.cc test/testutil.h ${SRC_FILES})
 

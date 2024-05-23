@@ -283,6 +283,7 @@ namespace LSMKV {
 
         // TableIterator need to move next
         std::vector<decltype(wait_to_merge.begin())> need_to_next;
+        std::map<uint64_t, decltype(wait_to_merge.begin())> hee;
         while (!wait_to_merge.empty()) {
             table_cache = new Table(file_no++);
             // TODO FIND A GOOD WAY TO RESERVE

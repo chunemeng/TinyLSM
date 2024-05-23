@@ -87,7 +87,7 @@ namespace LSMKV {
         std::map<uint64_t, std::multimap<uint64_t, TableIterator *>> cache;
         Table *table_cache = nullptr;
 
-        // the comparator of TableIterator*
+        // the comparator of Iterator
         struct CmpKey {
             bool operator()(const std::multimap<uint64_t, TableIterator *>::iterator &left,
                             const std::multimap<uint64_t, TableIterator *>::iterator &right) {
