@@ -11,6 +11,9 @@ public:
         std::random_device rd;
         gen = std::mt19937(rd());
     }
+    void reset() {
+        store.reset();
+    }
 
     void get() {
         uint64_t key = gen();
@@ -35,6 +38,7 @@ private:
 
 static void bench_db_put(benchmark::State &state) {
     perf test;
+    test.reset();
     constexpr int length = 10;
     for (auto _: state) {
         test.put(length);
@@ -45,6 +49,7 @@ BENCHMARK(bench_db_put);
 
 static void bench_db_get(benchmark::State &state) {
     perf test;
+    test.reset();
     constexpr int length = 100000;
     test.put(length, 1000);
     for (auto _: state) {
