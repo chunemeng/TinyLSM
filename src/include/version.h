@@ -20,23 +20,9 @@ namespace LSMKV {
     class WriteScheduler {
     public:
         struct Request {
-            Request(std::string &&s, Slice sli) : file_name(std::move(s)), slice(sli) {
-
-            }
-
-            Request(Request &&r) noexcept {
-                this->file_name = (std::move(r.file_name));
-                this->slice = r.slice;
-            }
-
-            Request &operator=(Request &&r) noexcept {
-                this->file_name = (std::move(r.file_name));
-                this->slice = r.slice;
-                return *this;
-            }
-
             std::string file_name;
             Slice slice;
+            std::promise<void> callback_;
         };
 
         explicit WriteScheduler(int size) {
@@ -53,7 +39,6 @@ namespace LSMKV {
         }
 
         void Schedule(Request r) {
-            ++count;
             request_queue_.push(std::move(r));
         }
 
@@ -65,31 +50,13 @@ namespace LSMKV {
                 NewWritableNoBufFile(req->file_name, &file);
                 file->WriteUnbuffered(s.data(), s.size());
                 delete file;
-
-                --count;
-                if (!count) {
-                    condition_.notify_one();
-                }
             }
         };
-
-        void WaitTasks() {
-            if (count == 0) {
-                return;
-            }
-            std::unique_lock<std::mutex> lock(latch_);
-            condition_.wait(lock, [this] {
-                return count == 0;
-            });
-        }
 
     private:
         Queue<std::optional<Request>> request_queue_;
         /** The background thread responsible for issuing scheduled requests to the disk manager. */
         std::vector<std::jthread> background_thread_;
-        std::atomic<int> count{0};
-        std::mutex latch_;
-        std::condition_variable condition_;
     };
 
     struct Version {
@@ -144,7 +111,6 @@ namespace LSMKV {
         }
 
         void reset() {
-            write_scheduler_.WaitTasks();
             fileno = 0;
             timestamp = 1;
             head = 0;
@@ -227,7 +193,7 @@ namespace LSMKV {
             return status[level];
         }
 
-        WriteScheduler write_scheduler_{2};
+        WriteScheduler write_scheduler_{3};
         std::string filename;
         uint64_t fileno = 0;
         uint64_t timestamp = 1;

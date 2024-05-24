@@ -130,8 +130,12 @@ namespace LSMKV {
         auto dbname = v->DBName();
         const char *tmp;
         auto& scheduler = v->write_scheduler_;
+        std::vector<std::future<void>> tasks;
+        std::promise<void> promise;
         for (auto &s: need_to_write) {
-            scheduler.Schedule({SSTFilePath(dbname, level + 1, v->fileno++), s});
+            promise = {};
+            tasks.emplace_back(promise.get_future());
+            scheduler.Schedule({SSTFilePath(dbname, level + 1, v->fileno++), s, std::move(promise)});
 //            NewWritableNoBufFile(, &file);
 ////            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
 //            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;
@@ -149,7 +153,9 @@ namespace LSMKV {
 ////            bool f = file->WriteUnbuffered(s.data(), s.size());
 //            delete file;
         }
-        scheduler.WaitTasks();
+        for (auto & fu:tasks) {
+            fu.get();
+        }
         return true;
     }
 
