@@ -227,7 +227,7 @@ namespace LSMKV {
             return status[level];
         }
 
-        WriteScheduler write_scheduler_{3};
+        WriteScheduler write_scheduler_{2};
         std::string filename;
         uint64_t fileno = 0;
         uint64_t timestamp = 1;
