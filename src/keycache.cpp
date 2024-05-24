@@ -289,8 +289,9 @@ namespace LSMKV {
         std::map<uint64_t, std::pair<uint64_t, Slice>> merged_sst;
         std::vector<std::unique_ptr<TableIterator >> old_table;
         uint64_t key_timestamp = 0;
-        for (auto it = wait_to_merge.begin(); it != wait_to_merge.end(); it++) {
-            auto rit = (*it).second;
+        old_table.reserve(wait_to_merge.size());
+        for (const auto &it: wait_to_merge) {
+            auto rit = (it).second;
             auto old_file_no = (rit)->file_no();
             if (file_location.count(old_file_no)) {
                 old_file_nos[0].emplace_back(old_file_no);
@@ -318,16 +319,16 @@ namespace LSMKV {
         int i{};
         uint64_t wait_insert_key{};
         if (t_size >= 408) [[likely]] {
-            while (it != end) {
+            do {
                 table_cache = new Table(file_no++);
                 char *tmp = table_cache->reserve(16384);
                 for (i = 0; i < 408 && it != end; it++) {
                     wait_insert_key = (*it).first;
                     value_slice = (*it).second.second;
-//                    if (isDrop) {
-//                        auto len = DecodeFixed32(value_slice.data() + 8);
-//                        isSkip = !len;
-//                    }
+                    if (isDrop) {
+                        auto len = DecodeFixed32(value_slice.data() + 8);
+                        isSkip = !len;
+                    }
                     if (!isSkip) [[likely]] {
                         ++i;
                         // WRITE KEY AND OFFSET
@@ -366,7 +367,7 @@ namespace LSMKV {
                 table_cache->pushCache(tmp_slice.data());
                 cache[level + 1].emplace(timestamp, iterator);
                 key_offset = bloom_length;
-            }
+            } while (it != end);
             table_cache = nullptr;
             return;
         }
@@ -375,10 +376,10 @@ namespace LSMKV {
         for (i = 0; i < 408 && it != end; it++) {
             wait_insert_key = (*it).first;
             value_slice = (*it).second.second;
-//            if (isDrop) {
-//                auto len = DecodeFixed32(value_slice.data() + 8);
-//                isSkip = !len;
-//            }
+            if (isDrop) {
+                auto len = DecodeFixed32(value_slice.data() + 8);
+                isSkip = !len;
+            }
             if (!isSkip) [[likely]] {
                 ++i;
                 // WRITE KEY AND OFFSET
@@ -417,6 +418,7 @@ namespace LSMKV {
         cache[level + 1].emplace(timestamp, iterator);
 
         table_cache = nullptr;
+
 //        while (!wait_to_merge.empty()) {
 //            table_cache = new Table(file_no++);
 //            // TODO FIND A GOOD WAY TO RESERVE

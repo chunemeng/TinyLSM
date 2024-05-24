@@ -154,8 +154,7 @@ namespace LSMKV {
     public:
         class TableIterator {
         public:
-            explicit TableIterator(Table *table) : _table(table), _cur(0) {
-                _end = _table->sst.size();
+            explicit TableIterator(Table *table) : _table(table) {
             };
 
             ~TableIterator() {
@@ -250,8 +249,8 @@ namespace LSMKV {
         private:
             Table *_table;
             // not include _end!!!!
-            uint64_t _cur;
-            uint64_t _end;
+            uint64_t _cur{};
+            uint64_t _end{};
         };
 
         TableIterator *Iterator() {

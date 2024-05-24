@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-//#define time_perf
+#define time_perf
 #define MB (1024 * 1024)
 
 void KVStore::writeLevel0(KVStore *kvStore) {
@@ -81,7 +81,7 @@ void KVStore::put(uint64_t key, const std::string &s) {
             delete builder_->it_;
         }
 
-        std::promise<bool> promise;
+        std::promise<void> promise;
         future_ = promise.get_future();
         genBuilder();
         cache->Drop();
@@ -377,7 +377,7 @@ void KVStore::gc(uint64_t chunk_size) {
             imm = nullptr;
         }
 
-        std::promise<bool> promise;
+        std::promise<void> promise;
         future_ = promise.get_future();
         genBuilder();
         cache->Drop();

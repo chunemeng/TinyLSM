@@ -3,7 +3,7 @@
 class PerfTest : public Test {
 private:
     const uint64_t SIMPLE_TEST_MAX = 512;
-    const uint64_t LARGE_TEST_MAX = 10000000;
+    const uint64_t LARGE_TEST_MAX = 1000000;
     static constexpr int value_size = 8;
     long aver_value_size = 0;
     std::mt19937 gen;

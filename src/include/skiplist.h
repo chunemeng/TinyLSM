@@ -80,7 +80,7 @@ namespace LSMKV {
 
         byte random_level() {
             // Twice faster than upper
-            return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rand()));
+            return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rnd()));
         }
 
         [[nodiscard]] inline byte getMaxHeight() const {
@@ -92,6 +92,7 @@ namespace LSMKV {
             return new(node_memory) node(key, std::move(value));
         }
 
+        std::minstd_rand rnd{std::random_device{}()};
         Arena *arena;
         byte max_level;
         node *_head;
@@ -139,7 +140,6 @@ namespace LSMKV {
 
         explicit Skiplist(Arena *arena)
                 : arena(arena), _head(createNode(0, V(), MAX_LEVEL)), max_level(1) {
-            srand(time(nullptr));
             for (byte level = 0; level < MAX_LEVEL; level++) {
                 _head->setnext(level, nullptr);
             }

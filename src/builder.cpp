@@ -126,7 +126,6 @@ namespace LSMKV {
     }
 
     bool WriteSlice(std::vector<Slice> &need_to_write, uint64_t level, Version *v) {
-        WritableNoBufFile *file;
         auto dbname = v->DBName();
         const char *tmp;
         auto& scheduler = v->write_scheduler_;

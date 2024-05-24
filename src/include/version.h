@@ -50,6 +50,7 @@ namespace LSMKV {
                 NewWritableNoBufFile(req->file_name, &file);
                 file->WriteUnbuffered(s.data(), s.size());
                 delete file;
+                req->callback_.set_value();
             }
         };
 

@@ -36,7 +36,7 @@ private:
     LSMKV::Version *v;
     std::string dbname;
     std::string vlog_path;
-    std::optional<std::future<bool>> future_;
+    std::optional<std::future<void>> future_;
     LSMKV::Builder *builder_;
     LSMKV::KeyCache *kc;
     LSMKV::Cache *cache;

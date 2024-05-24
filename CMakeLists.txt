@@ -36,6 +36,7 @@ add_custom_target(clear
 set_target_properties(clear PROPERTIES
         ADDITIONAL_MAKE_CLEAN_FILES "${CMAKE_BINARY_DIR}/CMakeFiles"
 )
+
 set(SRC_FILES
         kvstore.cc
         kvstore.h

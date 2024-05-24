@@ -12,7 +12,7 @@ namespace LSMKV {
         using Task = LSMKV::Builder;
         struct Request {
             Task task;
-            std::promise<bool> callback_;
+            std::promise<void> callback_;
         };
 
         Scheduler() {
@@ -36,7 +36,7 @@ namespace LSMKV {
 
             while ((req = request_queue_.pop()) != std::nullopt) {
                 req->task();
-                req->callback_.set_value(true);
+                req->callback_.set_value();
             }
         };
 
