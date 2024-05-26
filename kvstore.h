@@ -42,7 +42,7 @@ private:
     LSMKV::Cache *cache;
     Performance *p;
     static constexpr int MEM_MAX_SIZE = LSMKV::Option::pair_size_;
-    const bool crc_check = true;
+    const bool crc_check = false;
 
 
     std::unique_ptr<LSMKV::MemTable> mem;
@@ -61,9 +61,10 @@ private:
 
 public:
     KVStore(const std::string &dir, const std::string &vlog);
-  KVStore();
 
-  ~KVStore();
+    KVStore();
+
+    ~KVStore();
 
     void put(uint64_t key, const std::string &s) override;
 

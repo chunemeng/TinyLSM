@@ -9,10 +9,8 @@
 #include "../MurmurHash3.h"
 #include "./option.h"
 
-
 namespace LSMKV {
     static constexpr int bloom_size = LSMKV::Option::bloom_size_;
-
     static inline void CreateFilter(Slice *keys, size_t n, int len, size_t new_bloom_size, std::string *dst) {
         uint32_t hash[4] = {0};
         auto filter_size = new_bloom_size * 8;
@@ -57,9 +55,17 @@ namespace LSMKV {
 #endif
             }
         }
+//        for (int i = 0; i < 8192; i++) {
+//            if (abc[i] != dst[i]) {
+//                std::cout<<i<<' ';
+//            }
+//            std::cout<<(int)abc[i]<<' ';
+//        }
+//        std::cout<<std::endl;
     }
 
     static inline bool KeyMayMatch(const uint64_t &key, const Slice &bloom_filter) {
+//        std::cout<<(void*)(bloom_filter.data())<<std::endl;
         const size_t len = bloom_filter.size();
         if (len < 2) return false;
         const char *array = bloom_filter.data();
@@ -69,6 +75,22 @@ namespace LSMKV {
         char buf[8];
         EncodeFixed64(buf, key);
         MurmurHash3_x64_128(buf, 8, 1, hash);
+//        if (key == 0) {
+//            for (int i = 0; i < 8192; i++) {
+//                std::cout << (int) array[i] << ' ';
+//            }
+//            std::cout << std::endl;
+//        }
+//        if (key == 0) {
+//            std::cout<<(int)array[11]<<(int)array[22];
+//            std::string abb = std::string(bloom_filter.data(), 8192);
+//            for (int i = 0; i < 8192; i++) {
+//                if (abc[i] != abb[i]) {
+//                    std::cout<<i<<' ';
+//                }
+//            }
+//            std::cout<<"kahsldfa"<<std::endl;
+//        }
 
         for (uint32_t h: hash) {
 #ifdef double_k

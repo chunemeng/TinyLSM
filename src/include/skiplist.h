@@ -9,7 +9,7 @@
 #include <atomic>
 
 namespace LSMKV {
-    static constexpr int MAX_LEVEL = 8;
+    static constexpr int MAX_LEVEL = 16;
     typedef unsigned char byte;
 
     template<typename K, typename V>
@@ -83,7 +83,7 @@ namespace LSMKV {
             return MAX_LEVEL - std::__bit_width((uint32_t) (((1 << (MAX_LEVEL - 1)) - 1) & rnd()));
         }
 
-        [[nodiscard]] inline byte getMaxHeight() const {
+        [[nodiscard]] inline byte getMaxHeight() const noexcept {
             return max_level;
         }
 
@@ -100,6 +100,7 @@ namespace LSMKV {
         class Iterator {
         public:
             explicit Iterator(const Skiplist *list) : _list(list), _cur(nullptr), _end(nullptr) {};
+            ~Iterator() = default;
 
             [[nodiscard]] bool hasNext() const {
                 return _end != _cur && _cur != nullptr;
@@ -144,6 +145,7 @@ namespace LSMKV {
                 _head->setnext(level, nullptr);
             }
         };
+        ~Skiplist() = default;
 
         V &find(const K &key) const {
             auto cur = findNode(key)->next(0);

@@ -280,7 +280,7 @@ namespace LSMKV {
         // THE OFFSET START TO WRITE (BLOOM_SIZE AND HEADER_SIZE)
         constexpr auto bloom_length = LSMKV::Option::bloom_size_ + 32;
         uint64_t key_offset = bloom_length;
-
+        // todo use losertree
 
 //  // TableIterator need to move next
 //  std::vector<decltype(wait_to_merge.begin())> need_to_next;

@@ -38,15 +38,11 @@ namespace LSMKV {
             delete file_;
         }
 
-        Slice plain_char() {
-            return {vlog.data(), vlog.size()};
-        }
 
     private:
         // magic 0xff
         static constexpr const char magic = '\377';
         WritableFile *file_;
-        std::string vlog;
     };
 }
 #endif //VLOGBUILDER_H

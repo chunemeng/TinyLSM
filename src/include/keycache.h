@@ -53,7 +53,7 @@ namespace LSMKV {
 
         void scan(const uint64_t &K1, const uint64_t &K2, std::map<uint64_t, std::pair<uint64_t, uint64_t>> &key_map);
 
-        void PushCache(const char *tmp, const Option &op) {
+        void PushCache(const char *tmp) {
             assert(table_cache != nullptr);
             table_cache->pushCache(tmp);
             auto it = new TableIterator(table_cache);

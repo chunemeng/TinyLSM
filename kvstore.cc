@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-#define time_perf
+//#define time_perf
 #define MB (1024 * 1024)
 
 void KVStore::writeLevel0(KVStore *kvStore) {
@@ -16,6 +16,7 @@ void KVStore::writeLevel0(KVStore *kvStore) {
 KVStore::KVStore(const std::string &dir, const std::string &vlog)
         : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
     p = new Performance(dir);
+    future_ = std::nullopt;
     kc = new LSMKV::KeyCache(dir, v);
     cache = new LSMKV::Cache();
     mem = std::make_unique<LSMKV::MemTable>();
@@ -25,7 +26,7 @@ KVStore::KVStore(const std::string &dir, const std::string &vlog)
 
 KVStore::~KVStore() {
     if (future_.has_value()) {
-        future_->wait();
+        future_->get();
         delete builder_->it_;
     }
     if (mem != nullptr && mem->memoryUsage() != 0) {
@@ -55,7 +56,7 @@ void KVStore::putWhenGc(uint64_t key, const LSMKV::Slice &s) {
 #endif
     if (mem->memoryUsage() == MEM_MAX_SIZE) {
         if (future_.has_value()) {
-            future_->wait();
+            future_->get();
             future_ = std::nullopt;
             imm = nullptr;
             delete builder_->it_;
@@ -76,7 +77,7 @@ void KVStore::put(uint64_t key, const std::string &s) {
 #endif
     if (mem->memoryUsage() == MEM_MAX_SIZE) {
         if (future_.has_value()) {
-            future_->wait();
+            future_->get();
             imm = nullptr;
             delete builder_->it_;
         }
@@ -102,31 +103,31 @@ std::string KVStore::get(uint64_t key) {
 #ifdef time_perf
     PerformanceGuard guard(p, "GET");
 #endif
-    std::string s = mem->get(key);
+    std::string s = std::move(mem->get(key));
     if (s.empty()) {
         if (future_.has_value()) {
-            s = imm->get(key);
+            s = std::move(imm->get(key));
             if (!s.empty()) {
                 return s;
             }
-            future_->wait();
+            future_->get();
             future_ = std::nullopt;
             imm = nullptr;
             delete builder_->it_;
         }
 
         if (kc->empty()) {
-            return "";
+            return {};
         }
-        s = kc->get(key);
+        s = std::move(kc->get(key));
 
         if (s.empty()) {
-            return "";
+            return {};
         }
         LSMKV::Slice result;
         uint32_t len = LSMKV::DecodeFixed32(s.data() + 8);
         if (len == 0) {
-            return "";
+            return {};
         }
 
         const char *data;
@@ -163,10 +164,13 @@ std::string KVStore::get(uint64_t key) {
             (crc_check && !CheckCrc(data, len))) [[unlikely]] {
             return {};
         }
-        return {data + 15, len - 15};
+        s.reserve(len -= 15);
+        s.resize(len);
+        LSMKV::memcpy_tiny(s.data(), data + 15, len);
+        return std::move(s);
     }
     if (mem->DELETED(s)) {
-        return "";
+        return {};
     }
     return s;
 }
@@ -179,7 +183,7 @@ bool KVStore::del(uint64_t key) {
 #ifdef time_perf
     PerformanceGuard guard(p, "DEL");
 #endif
-    std::string s = get(key);
+    std::string s = std::move(get(key));
     if (!s.empty() && !mem->DELETED(s)) {
         put(key, "~DELETED~");
         return true;
@@ -194,7 +198,7 @@ bool KVStore::del(uint64_t key) {
 void KVStore::reset() {
     PerformanceGuard guard(p, "RESET");
     if (future_.has_value()) {
-        future_->wait();
+        future_->get();
         future_ = std::nullopt;
         delete builder_->it_;
     }
@@ -217,16 +221,17 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 #ifdef time_perf
     PerformanceGuard guard(p, "SCAN");
 #endif
+
     LSMKV::Iterator *iter = mem->newIterator();
     std::list<std::pair<uint64_t, std::string>> tmp_list;
     iter->scan(key1, key2, tmp_list);
-
     if (future_.has_value()) {
-        future_->wait();
+        future_->get();
         future_ = std::nullopt;
-        delete builder_->it_;
         imm = nullptr;
+        delete builder_->it_;
     }
+
     std::map<uint64_t, std::string> map;
     kc->scan(key1, key2, map);
 
@@ -284,7 +289,7 @@ void KVStore::gc(uint64_t chunk_size) {
     PerformanceGuard guard(p, "GC");
 #endif
     if (future_.has_value()) {
-        future_->wait();
+        future_->get();
         future_ = std::nullopt;
         imm = nullptr;
         delete builder_->it_;
@@ -372,7 +377,8 @@ void KVStore::gc(uint64_t chunk_size) {
     v->tail += current_size;
     if (mem->memoryUsage() != 0) {
         if (future_.has_value()) {
-            future_->wait();
+
+            future_->get();
             delete builder_->it_;
             imm = nullptr;
         }

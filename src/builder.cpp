@@ -71,9 +71,10 @@ namespace LSMKV {
             EncodeFixed64(key_buf + 24, meta.largest);
 
             CreateFilter(key_buf + bloom_length, meta.size, 20, key_buf + 32);
+            KeyMayMatch(0, key_buf + 32);
             file->WriteUnbuffered(key_buf, bloom_length + meta.size * 20);
 
-            kc->PushCache(key_buf, Option::getInstance());
+            kc->PushCache(key_buf);
 
             // need multi thread
             vLogBuilder.Drop();
@@ -95,6 +96,8 @@ namespace LSMKV {
 
     bool SSTCompaction(uint64_t level, uint64_t file_no, Version *v, KeyCache *kc) {
         std::vector<uint64_t> need_to_move;
+        // todo may no need lock in here
+
         //Need to be rm and earse in version
         std::vector<uint64_t> old_files[2] = {std::vector<uint64_t>(), std::vector<uint64_t>()};
         std::vector<Slice> need_to_write;
@@ -128,7 +131,7 @@ namespace LSMKV {
     bool WriteSlice(std::vector<Slice> &need_to_write, uint64_t level, Version *v) {
         auto dbname = v->DBName();
         const char *tmp;
-        auto& scheduler = v->write_scheduler_;
+        auto &scheduler = v->write_scheduler_;
         std::vector<std::future<void>> tasks;
         std::promise<void> promise;
         for (auto &s: need_to_write) {
@@ -152,7 +155,7 @@ namespace LSMKV {
 ////            bool f = file->WriteUnbuffered(s.data(), s.size());
 //            delete file;
         }
-        for (auto & fu:tasks) {
+        for (auto &fu: tasks) {
             fu.get();
         }
         return true;

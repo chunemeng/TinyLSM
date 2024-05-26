@@ -34,7 +34,6 @@ namespace LSMKV {
         Arena arena;
         Table table;
 		static constexpr const char* tombstone = "~DELETED~";
-
     };
 }
 
