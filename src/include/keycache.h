@@ -31,7 +31,7 @@ namespace LSMKV {
 			uint64_t size,
 			std::vector<uint64_t> old_file_nos[2],
 			std::vector<uint64_t>& need_to_move,
-			std::vector<Slice>& need_to_write);
+			std::vector<WriteSlice>& need_to_write);
 
 		template<typename function>
 		void FindCompactionNextLevel(uint64_t level, function const& callback);
@@ -41,7 +41,7 @@ namespace LSMKV {
 			uint64_t timestamp,
 			bool isDrop,
 			std::vector<std::unique_ptr<TableIterator>>& wait_to_merge,
-			std::vector<Slice>& need_to_write);
+			std::vector<WriteSlice>& need_to_write);
 
 		void reset();
 

@@ -95,7 +95,9 @@ namespace LSMKV {
         size += table.insert(key, Slice(buf, val.size()));
     }
 
-    MemTable::~MemTable() = default;
+    MemTable::~MemTable() {
+//        std::cout<<"Arena: "<<arena.getWaste()<<std::endl;
+    };
 
     // NEED TO STORE VALUE
     void MemTable::put(key_type key, const Slice &val) {

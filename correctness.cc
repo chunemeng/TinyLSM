@@ -76,6 +76,9 @@ private:
 
         for (i = 0; i < max; i ++) {
             auto g = store.get(i);
+            if (!(((i & 1) ? std::string(i + 1, 's') : not_found) == g)) {
+                int jj = 7;
+            }
             EXPECT((i & 1) ? std::string(i + 1, 's') : not_found,
                    g);
         }
@@ -95,10 +98,20 @@ private:
 
         for (i = 0; i < max; ++i) {
             store.put(i, std::string(i + 1, 's'));
+            if (i > 407) {
+                auto gp = store.get(407);
+                if (gp != std::string(408, 's')) {
+                    int fff = 5;
+                }
+            }
         }
 
         for (i = 0; i < max; ++i) {
-            EXPECT(std::string(i + 1, 's'), store.get(i));
+            auto gp = store.get(i);
+            if (gp != std::string(i + 1 ,'s')) {
+                int fff = 5;
+            }
+            EXPECT(std::string(i + 1, 's'), gp);
 
             switch (i % 3) {
                 case 0:

@@ -100,7 +100,7 @@ namespace LSMKV {
 
         //Need to be rm and earse in version
         std::vector<uint64_t> old_files[2] = {std::vector<uint64_t>(), std::vector<uint64_t>()};
-        std::vector<Slice> need_to_write;
+        std::vector<class WriteSlice> need_to_write;
         if (v->NeedNewLevel(level)) {
             v->AddNewLevel(1);
         }
@@ -128,7 +128,7 @@ namespace LSMKV {
         return true;
     }
 
-    bool WriteSlice(std::vector<Slice> &need_to_write, uint64_t level, Version *v) {
+    bool WriteSlice(std::vector<class WriteSlice> &need_to_write, uint64_t level, Version *v) {
         auto dbname = v->DBName();
         const char *tmp;
         auto &scheduler = v->write_scheduler_;

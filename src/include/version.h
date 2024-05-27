@@ -14,6 +14,7 @@
 #include "../../utils/filename.h"
 #include "../../utils.h"
 #include "queue.hpp"
+#include "../../utils/bloomfilter.h"
 
 namespace LSMKV {
 
@@ -21,7 +22,7 @@ namespace LSMKV {
     public:
         struct Request {
             std::string file_name;
-            Slice slice;
+            WriteSlice slice;
             std::promise<void> callback_;
         };
 
@@ -46,9 +47,13 @@ namespace LSMKV {
             std::optional<Request> req;
             WritableNoBufFile *file;
             while ((req = std::move(request_queue_.pop())) != std::nullopt) {
-                const Slice &s = req->slice;
+                WriteSlice s = req->slice;
+                char *tmp = s.data();
+                memset(tmp + 32, 0, bloom_size);
+                CreateFilter(tmp + bloom_size + 32, DecodeFixed64(tmp + 8), 20, tmp + 32);
+                KeyMayMatch(0, tmp + 32);
                 NewWritableNoBufFile(req->file_name, &file);
-                file->WriteUnbuffered(s.data(), s.size());
+                file->WriteUnbuffered(tmp, s.size());
                 delete file;
                 req->callback_.set_value();
             }

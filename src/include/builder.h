@@ -16,7 +16,7 @@ namespace LSMKV {
 
     bool MoveToNewLevel(uint64_t level, const uint64_t &timestamp, std::vector<uint64_t> &new_files, Version *v);
 
-    bool WriteSlice(std::vector<Slice> &need_to_write, uint64_t level, Version *v);
+    bool WriteSlice(std::vector<class WriteSlice> &need_to_write, uint64_t level, Version *v);
 
     uint64_t FindLevels(const std::string &dbname, Version *v);
 

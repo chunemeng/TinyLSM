@@ -11,7 +11,8 @@ namespace LSMKV {
 		}
 
 		alloc_ptr = allocateNewBlock(BLOCK_SIZE);
-		alloc_bytes_remaining = BLOCK_SIZE;
+        waste += BLOCK_SIZE - bytes;
+        alloc_bytes_remaining = BLOCK_SIZE;
 
 		char* result = alloc_ptr;
 		alloc_ptr += bytes;

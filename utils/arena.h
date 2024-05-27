@@ -8,6 +8,7 @@ const static int BLOCK_SIZE = 4096;
 // TODO REWRITE ARENA FOR ALIGN BYTE AND FIND A NEW MAGIC NUMBER
 class Arena {
 private:
+    uint64_t waste{};
 	char* alloc_ptr;
 	size_t alloc_bytes_remaining;
 	std::vector<char*> pool;
@@ -15,6 +16,9 @@ private:
 	char* allocateFallBack(size_t bytes);
 	char* allocateNewBlock(size_t bytes);
 public:
+    uint64_t getWaste() {
+        return waste;
+    }
 	Arena() : alloc_ptr(nullptr), alloc_bytes_remaining(0) {
 	};
 	~Arena() {
