@@ -4,6 +4,52 @@
 #include "../utils/coding.h"
 
 namespace LSMKV {
+#ifdef rbtree
+    class MapIter {
+    public:
+        MapIter(MemTable::Table *table) : table_(table) {
+            _cur = table->end();
+            _end = table->end();
+        }
+
+        [[nodiscard]] bool hasNext() const {
+            return _end != _cur && _cur != table_->end();
+        }
+
+        const key_type &key() const {
+            return _cur->first;
+        }
+
+        void next() {
+            _cur++;
+        }
+
+        void seek(const key_type &key) {
+            _cur = table_->find(key);
+        }
+
+        void seek(const key_type &K1, const key_type &K2) {
+            _cur = table_->lower_bound(K1);
+            _end = table_->upper_bound(K2);
+//            if (_end != nullptr && _end->_key == K2) _end = _end->next(0);
+        }
+
+        void seekToFirst() {
+            _cur = table_->begin();
+            _end = table_->end();
+        }
+
+        const Slice &value() const {
+            return _cur->second;
+        }
+
+    private:
+        const MemTable::Table *table_;
+        decltype(table_->begin()) _cur;
+        decltype(table_->begin()) _end;
+    };
+#endif
+
     class MemTableIterator : public Iterator {
     public:
         explicit MemTableIterator(MemTable::Table *table) : _iter(table) {
@@ -49,14 +95,85 @@ namespace LSMKV {
         }
 
     private:
+#ifdef rbtree
+        MapIter _iter;
+#else
         MemTable::Table::Iterator _iter;
+#endif
     };
 
     Iterator *MemTable::newIterator() {
         return new MemTableIterator(&table);
     }
 
+
+#ifdef rbtree
     void MemTable::put(key_type key, value_type &&val) {
+        char *buf = arena.allocate(val.size());
+        memcpy_tiny(buf, val.data(), val.size());
+        auto pair = table.insert({key, Slice(buf, val.size())});
+        if (!pair.second) {
+            pair.first->second = Slice(buf, val.size());
+        }
+        size += pair.second;
+    }
+
+    value_type MemTable::get(key_type key) const {
+        auto it = table.find(key);
+        if (it == table.end()) {
+            return "";
+        } else {
+            auto value = it->second;
+            auto size = value.size();
+            std::string res;
+            res.reserve(size);
+            res.resize(size);
+            memcpy_tiny(res.data(), value.data(), size);
+            return std::move(res);
+        }
+    }
+
+    MemTable::MemTable() : size(0) {
+    }
+
+    bool MemTable::del(key_type key) {
+        // Maybe useless
+        auto it = table.find(key);
+        if (it == table.end()) {
+            return false;
+        } else {
+            it->second = Slice(tombstone, 9);
+            return true;
+        }
+    }
+
+    void MemTable::put(key_type key, const value_type &val) {
+        char *buf = arena.allocate(val.size());
+        memcpy_tiny(buf, val.data(), val.size());
+        auto pair = table.insert({key, Slice(buf, val.size())});
+        if (!pair.second) {
+            pair.first->second = Slice(buf, val.size());
+        }
+        size += pair.second;
+    }
+
+    // NEED TO STORE VALUE
+    void MemTable::put(key_type key, const Slice &val) {
+        char *buf = arena.allocate(val.size());
+        memcpy_tiny(buf, val.data(), val.size());
+        auto pair = table.insert({key, Slice(buf, val.size())});
+        if (!pair.second) {
+            pair.first->second = Slice(buf, val.size());
+        }
+        size += pair.second;
+    }
+
+    // todo not use
+    void MemTable::put(key_type key, Slice &&val) {
+        size += table.insert({key, std::move(val)}).second;
+    }
+#else
+        void MemTable::put(key_type key, value_type &&val) {
         char *buf = arena.allocate(val.size());
         memcpy_tiny(buf, val.data(), val.size());
         size += table.insert(key, Slice(buf, val.size()));
@@ -77,16 +194,14 @@ namespace LSMKV {
         return "";
     }
 
+
     MemTable::MemTable() : table(&arena), size(0) {
     }
+
 
     bool MemTable::del(key_type key) {
         // Maybe useless
         return table.remove(key, Slice(tombstone, 9));
-    }
-
-    size_t MemTable::memoryUsage() const {
-        return size;
     }
 
     void MemTable::put(key_type key, const value_type &val) {
@@ -95,25 +210,30 @@ namespace LSMKV {
         size += table.insert(key, Slice(buf, val.size()));
     }
 
-    MemTable::~MemTable() {
-//        std::cout<<"Arena: "<<arena.getWaste()<<std::endl;
-    };
 
     // NEED TO STORE VALUE
     void MemTable::put(key_type key, const Slice &val) {
         char *buf = arena.allocate(val.size());
-        if (val.size() < 64) {
-            memcpy_tiny(buf, val.data(), val.size());
-        } else {
-            memcpy(buf, val.data(), val.size());
-        }
+        memcpy_tiny(buf, val.data(), val.size());
+
         size += table.insert(key, Slice(buf, val.size()));
     }
+
+
 
     // NO NEED TO STORE VALUE
     void MemTable::put(key_type key, Slice &&val) {
         size += table.insert(key, std::move(val));
     }
+#endif
+    MemTable::~MemTable() {
+//        std::cout<<"Arena: "<<arena.getWaste()<<std::endl;
+    };
+
+    size_t MemTable::memoryUsage() const {
+        return size;
+    }
+
 
     char *MemTable::reserve(size_t key_size) {
         return arena.allocate(key_size);
