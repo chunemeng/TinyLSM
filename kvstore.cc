@@ -24,6 +24,10 @@ KVStore::KVStore(const std::string &dir, const std::string &vlog)
     p->StartTest("TOTAL");
 }
 
+static inline bool CheckCrc(const char *data, uint32_t len) {
+    return data[0] == '\377' && utils::crc16(data + 3, len - 3) == LSMKV::DecodeFixed16(data + 1);
+}
+
 KVStore::~KVStore() {
     if (future_.has_value()) {
         future_->get();
@@ -89,10 +93,6 @@ void KVStore::put(uint64_t key, const std::string &s) {
         scheduler_.Schedule({*builder_, std::move(promise)});
     }
     mem->put(key, s);
-}
-
-static inline bool CheckCrc(const char *data, uint32_t len) {
-    return data[0] == '\377' && utils::crc16(data + 3, len - 3) == LSMKV::DecodeFixed16(data + 1);
 }
 
 /**

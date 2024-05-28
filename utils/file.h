@@ -112,7 +112,7 @@ namespace LSMKV {
         }
 
         bool MoveTo(uint64_t n) {
-            if (::lseek(fd_, n, SEEK_SET) == static_cast<off_t>(-1)) {
+            if (::lseek64(fd_, n, SEEK_SET) == static_cast<off_t>(-1)) {
                 return false;
             }
             return true;
@@ -120,7 +120,7 @@ namespace LSMKV {
 
 
         bool Skip(uint64_t n) {
-            if (::lseek(fd_, n, SEEK_CUR) == static_cast<off_t>(-1)) {
+            if (::lseek64(fd_, n, SEEK_CUR) == static_cast<off_t>(-1)) {
                 return false;
             }
             return true;
@@ -480,7 +480,7 @@ namespace LSMKV {
                                            WritableNoBufFile **result) {
         int fd = ::open(filename.c_str(),
                         O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
-        ::lseek(fd, 0, SEEK_SET);
+        ::lseek64(fd, 0, SEEK_SET);
         if (fd < 0) {
             *result = nullptr;
             return false;

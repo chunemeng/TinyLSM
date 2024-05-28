@@ -11,6 +11,7 @@
 namespace LSMKV {
 	using key_type = uint64_t;
 	using value_type = std::string;
+//#define rbtree
 	class MemTable {
 	public:
 #ifdef rbtree

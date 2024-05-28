@@ -42,7 +42,7 @@ private:
     LSMKV::Cache *cache;
     Performance *p;
     static constexpr int MEM_MAX_SIZE = LSMKV::Option::pair_size_;
-    const bool crc_check = false;
+    const bool crc_check = true;
 
 
     std::unique_ptr<LSMKV::MemTable> mem;

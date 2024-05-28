@@ -161,13 +161,13 @@ namespace utils {
      * @param path file to be searched for.
      * @return -1 if fail to open, offset if find successfully.
      */
-    static inline off_t seek_data_block(const std::string &path) {
+    static inline off64_t seek_data_block(const std::string &path) {
         int fd = open(path.c_str(), O_RDWR, 0644);
         if (fd < 0) {
             perror("open");
             return -1;
         }
-        off_t offset = lseek(fd, 0, SEEK_DATA);
+        off64_t offset = lseek(fd, 0, SEEK_DATA);
         close(fd);
         return offset;
     }
@@ -447,35 +447,170 @@ namespace utils {
         return crc;
     }
 
-    static inline uint64_t offset_tail(const std::string &path, uint64_t tail) {
-        LSMKV::RandomReadableFile *file;
-        LSMKV::NewRandomReadableFile(path, &file);
+
+    static inline uint64_t offset_tail(const std::string &path, uint64_t head) {
+        LSMKV::SequentialFile *file;
+
+        int fd = ::open(path.c_str(), O_RDONLY | LSMKV::kOpenBaseFlags);
+
+        off64_t offset = ::lseek(fd, 0, SEEK_DATA);
+
+
+        file = new LSMKV::SequentialFile(path, fd);
+
+
         // Can get length when read
         LSMKV::Slice result;
         const char magic = '\377';
 
         char tmp[PAGE_SIZE];
 
-        file->Read(tail, PAGE_SIZE, &result, tmp);
-        uint64_t offset = result.size();
         uint32_t vlen;
+        uint32_t cur_offset;
+        uint64_t size;
+        std::string buf;
+        while ((size = head - offset)) {
+            cur_offset = 0;
 
-        for (uint64_t i = 0; i < offset - 13; i++) {
-            if (tmp[i] == magic && i + 14 < offset) {
-                vlen = LSMKV::DecodeFixed32(tmp + i + 11);
-                if (i + 14 + vlen <= offset) {
-                    if (crc16(tmp + 15 + i, vlen) == LSMKV::DecodeFixed16(tmp + 2)) {
-                        return i;
+            if (buf.size() >= PAGE_SIZE) {
+                memcpy(tmp, buf.c_str(), PAGE_SIZE);
+                buf = buf.substr(PAGE_SIZE);
+            } else {
+                memcpy(tmp, buf.c_str(), buf.size());
+                auto read_size = PAGE_SIZE - buf.size();
+                file->Read(read_size, &result, tmp + buf.size());
+                buf.resize(0);
+            }
+
+            std::string_view view(result.data(), result.size());
+            size_t magic_offset;
+            while ((magic_offset = view.find(magic)) != std::string::npos) {
+                cur_offset += magic_offset;
+                view.remove_prefix(magic_offset);
+                // todo: if cant read the vlen
+                if (view.size() < 15) [[unlikely]] {
+                    auto buf_size = PAGE_SIZE;
+                    if (buf.size() < buf_size) {
+                        if (buf.capacity() < buf_size) {
+                            buf.reserve(buf_size);
+                        }
+                        auto old_size = buf.size();
+                        buf.resize(buf_size);
+
+                        file->Read(buf_size - old_size, &result, buf.data() + old_size);
+                    }
+                    int i = 0;
+                    char len[4];
+
+                    for (size_t s = 11; i < view.size(); i++) {
+                        len[i++] = view[s];
+                    }
+
+                    assert(i <= 3);
+
+                    for (int j = 0; i < 4; ++i, ++j) {
+                        len[i] = buf[i];
+                    }
+                    vlen = LSMKV::DecodeFixed32(len);
+
+                    buf_size = vlen + 15 - view.size();
+                    if (buf.size() < buf_size) {
+                        if (buf.capacity() < buf_size) {
+                            buf.reserve(buf_size);
+                        }
+                        auto old_size = buf.size();
+                        buf.resize(buf_size);
+
+                        file->Read(buf_size - old_size, &result, buf.data() + old_size);
+                    }
+                    uint16_t crc;
+                    if (view.size() >= 3) {
+                        crc = LSMKV::DecodeFixed16(view.data() + 1);
+                        if (crc16_prefix(view.data() + 3, view.size() - 3, buf.c_str(), buf_size) ==
+                            crc) {
+                            return offset + cur_offset;
+                        }
+                    } else if (view.size() < 2) {
+                        crc = LSMKV::DecodeFixed16(buf.c_str());
+                        if (crc16(buf.c_str() + 2, vlen + 12) ==
+                            crc) {
+                            return offset + cur_offset;
+                        }
+                    } else {
+                        len[0] = view[1];
+                        len[1] = buf[0];
+                        crc = LSMKV::DecodeFixed16(len);
+                        if (crc16(buf.c_str() + 1, vlen + 12) ==
+                            crc) {
+                            return offset + cur_offset;
+                        }
                     }
                 } else {
+                    vlen = LSMKV::DecodeFixed32(view.data() + 11);
+
+                    if (offset + cur_offset + vlen + 15 > head) {
+                        cur_offset++;
+                        view.remove_prefix(1);
+                        continue;
+                    }
+                    if (vlen + 15 > view.size()) [[unlikely]] {
+                        auto buf_size = vlen + 15 - view.size();
+                        if (buf.size() < buf_size) {
+                            if (buf.capacity() < buf_size) {
+                                buf.reserve(buf_size);
+                            }
+                            auto old_size = buf.size();
+                            buf.resize(buf_size);
+
+                            file->Read(buf_size - old_size, &result, buf.data() + old_size);
+                        }
+                        if (crc16_prefix(view.data() + 3, view.size() - 3, buf.c_str(), buf_size) ==
+                            LSMKV::DecodeFixed16(view.data() + 1)) {
+                            return offset + cur_offset;
+                        }
+
+                    } else {
+                        if (crc16(view.data() + 3, vlen + 12) ==
+                            LSMKV::DecodeFixed16(view.data() + 1)) {
+                            return offset + cur_offset;
+                        }
+                    }
+                }
+                cur_offset++;
+                view.remove_prefix(1);
+            }
+            offset += PAGE_SIZE;
+        }
+
+        if (size >= 15) {
+            file->Read(size, &result, tmp);
+            std::string_view view(result.data(), size);
+            auto magic_offset = view.find(magic);
+            while ((magic_offset = view.find(magic)) != std::string::npos) {
+                cur_offset += magic_offset;
+                if (view.size() < magic_offset + 15) {
                     break;
                 }
+
+                vlen = LSMKV::DecodeFixed32(view.data() + magic_offset + 11);
+
+                if (offset + cur_offset + vlen + 15 > head) {
+                    cur_offset++;
+                    view.remove_prefix(magic_offset + 1);
+                    continue;
+                }
+                if (vlen + 15 > view.size()) [[unlikely]] {
+                    break;
+                } else {
+                    if (crc16(view.data() + 15 + magic_offset, vlen + 12) == LSMKV::DecodeFixed16(view.data() + 1)) {
+                        return offset + cur_offset;
+                    }
+                }
+                cur_offset++;
+                view.remove_prefix(magic_offset + 1);
             }
         }
-        delete file;
-        // After find a page and not found
-        assert(false);
-        return tail;
+        return head;
     }
 
     static inline bool rmfiles(std::string &path) {

@@ -68,6 +68,12 @@ namespace LSMKV {
     struct Version {
         explicit Version(const std::string &dbname) : filename(VersionFileName(dbname)) {
             // read from current file
+            auto vlog_files = std::move(VLogFileName(dbname));
+            if (FileExists(vlog_files)) {
+                head = GetFileSize(vlog_files);
+                tail = utils::offset_tail(vlog_files, head);
+            }
+
             if (FileExists(filename)) {
                 RandomReadableFile *file;
                 NewRandomReadableFile(filename, &file);
@@ -77,8 +83,8 @@ namespace LSMKV {
                 if (slice.size() == 40) {
                     fileno = DecodeFixed64(buf);
                     timestamp = DecodeFixed64(buf + 8);
-                    head = DecodeFixed64(buf + 16);
-                    tail = DecodeFixed64(buf + 24);
+//                    head = DecodeFixed64(buf + 16);
+//                    tail = DecodeFixed64(buf + 24);
                     max_level = DecodeFixed64(buf + 32);
                 }
                 delete file;
