@@ -1,5 +1,5 @@
 # Require CMake 3.10. If available, use the policies up to CMake 3.22.
-cmake_minimum_required (VERSION 3.10...3.22)
+cmake_minimum_required (VERSION 3.22)
 
 project (benchmark VERSION 1.8.3 LANGUAGES CXX)
 
@@ -46,14 +46,14 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    # As of CMake 3.18, CMAKE_SYSTEM_PROCESSOR is not set properly for MSVC and
-    # cross-compilation (e.g. Host=x86_64, target=aarch64) requires using the
-    # undocumented, but working variable.
-    # See https://gitlab.kitware.com/cmake/cmake/-/issues/15170
-    set(CMAKE_SYSTEM_PROCESSOR ${MSVC_CXX_ARCHITECTURE_ID})
-    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM")
-      set(CMAKE_CROSSCOMPILING TRUE)
-    endif()
+  # As of CMake 3.18, CMAKE_SYSTEM_PROCESSOR is not set properly for MSVC and
+  # cross-compilation (e.g. Host=x86_64, target=aarch64) requires using the
+  # undocumented, but working variable.
+  # See https://gitlab.kitware.com/cmake/cmake/-/issues/15170
+  set(CMAKE_SYSTEM_PROCESSOR ${MSVC_CXX_ARCHITECTURE_ID})
+  if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM")
+    set(CMAKE_CROSSCOMPILING TRUE)
+  endif()
 endif()
 
 set(ENABLE_ASSEMBLY_TESTS_DEFAULT OFF)
@@ -74,7 +74,7 @@ function(should_enable_assembly_tests)
     # FIXME: Make these work on 32 bit builds
     return()
   elseif(BENCHMARK_BUILD_32_BITS)
-     # FIXME: Make these work on 32 bit builds
+    # FIXME: Make these work on 32 bit builds
     return()
   endif()
   find_program(LLVM_FILECHECK_EXE FileCheck)
@@ -91,20 +91,18 @@ should_enable_assembly_tests()
 
 # This option disables the building and running of the assembly verification tests
 option(BENCHMARK_ENABLE_ASSEMBLY_TESTS "Enable building and running the assembly tests"
-    ${ENABLE_ASSEMBLY_TESTS_DEFAULT})
+        ${ENABLE_ASSEMBLY_TESTS_DEFAULT})
 
 # Make sure we can import out CMake functions
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "cmake")
 
 
 # Read the git tags to determine the project version
-include(GetGitVersion)
-get_git_version(GIT_VERSION)
 
 # If no git version can be determined, use the version
 # from the project() command
-if ("${GIT_VERSION}" STREQUAL "0.0.0")
+if ("0.0.0" STREQUAL "0.0.0")
   set(VERSION "v${benchmark_VERSION}")
 else()
   set(VERSION "${GIT_VERSION}")
@@ -114,9 +112,9 @@ endif()
 # drop everything after second "-" (including said "-").
 string(STRIP ${VERSION} VERSION)
 if(VERSION MATCHES v[^-]*-)
-   string(REGEX REPLACE "v([^-]*)-([0-9]+)-.*" "\\1.\\2"  NORMALIZED_VERSION ${VERSION})
+  string(REGEX REPLACE "v([^-]*)-([0-9]+)-.*" "\\1.\\2"  NORMALIZED_VERSION ${VERSION})
 else()
-   string(REGEX REPLACE "v(.*)" "\\1" NORMALIZED_VERSION ${VERSION})
+  string(REGEX REPLACE "v(.*)" "\\1" NORMALIZED_VERSION ${VERSION})
 endif()
 
 # Tell the user what versions we are using
@@ -127,10 +125,10 @@ set(GENERIC_LIB_VERSION ${NORMALIZED_VERSION})
 string(SUBSTRING ${NORMALIZED_VERSION} 0 1 GENERIC_LIB_SOVERSION)
 
 # Import our CMake modules
-include(AddCXXCompilerFlag)
+include(./cmake/AddCXXCompilerFlag.cmake)
 include(CheckCXXCompilerFlag)
 include(CheckLibraryExists)
-include(CXXFeatureCheck)
+include(./cmake/CXXFeatureCheck.cmake)
 
 check_library_exists(rt shm_open "" HAVE_LIB_RT)
 
@@ -191,7 +189,7 @@ else()
   add_cxx_compiler_flag(-Wfloat-equal)
   add_cxx_compiler_flag(-Wold-style-cast)
   if(BENCHMARK_ENABLE_WERROR)
-      add_cxx_compiler_flag(-Werror)
+    add_cxx_compiler_flag(-Werror)
   endif()
   if (NOT BENCHMARK_ENABLE_TESTING)
     # Disable warning when compiling tests as gtest does not use 'override'.
@@ -213,7 +211,7 @@ else()
   endif()
   # Disable deprecation warnings for release builds (when -Werror is enabled).
   if(BENCHMARK_ENABLE_WERROR)
-      add_cxx_compiler_flag(-Wno-deprecated)
+    add_cxx_compiler_flag(-Wno-deprecated)
   endif()
   if (NOT BENCHMARK_ENABLE_EXCEPTIONS)
     add_cxx_compiler_flag(-fno-exceptions)
@@ -264,20 +262,20 @@ else()
 
   # Coverage build type
   set(BENCHMARK_CXX_FLAGS_COVERAGE "${CMAKE_CXX_FLAGS_DEBUG}"
-    CACHE STRING "Flags used by the C++ compiler during coverage builds."
-    FORCE)
+          CACHE STRING "Flags used by the C++ compiler during coverage builds."
+          FORCE)
   set(BENCHMARK_EXE_LINKER_FLAGS_COVERAGE "${CMAKE_EXE_LINKER_FLAGS_DEBUG}"
-    CACHE STRING "Flags used for linking binaries during coverage builds."
-    FORCE)
+          CACHE STRING "Flags used for linking binaries during coverage builds."
+          FORCE)
   set(BENCHMARK_SHARED_LINKER_FLAGS_COVERAGE "${CMAKE_SHARED_LINKER_FLAGS_DEBUG}"
-    CACHE STRING "Flags used by the shared libraries linker during coverage builds."
-    FORCE)
+          CACHE STRING "Flags used by the shared libraries linker during coverage builds."
+          FORCE)
   mark_as_advanced(
-    BENCHMARK_CXX_FLAGS_COVERAGE
-    BENCHMARK_EXE_LINKER_FLAGS_COVERAGE
-    BENCHMARK_SHARED_LINKER_FLAGS_COVERAGE)
+          BENCHMARK_CXX_FLAGS_COVERAGE
+          BENCHMARK_EXE_LINKER_FLAGS_COVERAGE
+          BENCHMARK_SHARED_LINKER_FLAGS_COVERAGE)
   set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
-    "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Coverage.")
+          "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Coverage.")
   add_cxx_compiler_flag(--coverage COVERAGE)
 endif()
 
@@ -338,8 +336,8 @@ add_subdirectory(src)
 if (BENCHMARK_ENABLE_TESTING)
   enable_testing()
   if (BENCHMARK_ENABLE_GTEST_TESTS AND
-      NOT (TARGET gtest AND TARGET gtest_main AND
-           TARGET gmock AND TARGET gmock_main))
+          NOT (TARGET gtest AND TARGET gtest_main AND
+          TARGET gmock AND TARGET gmock_main))
     if (BENCHMARK_USE_BUNDLED_GTEST)
       include(GoogleTest)
     else()
