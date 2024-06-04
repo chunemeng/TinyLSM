@@ -27,7 +27,7 @@ public:
     }
 
 private:
-    static constexpr int value_size = 1024;
+    static constexpr int value_size = 8;
     uint64_t curr = 0;
     std::mt19937 gen{std::random_device{}()};
 

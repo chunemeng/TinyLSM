@@ -56,7 +56,10 @@ namespace LSMKV {
                         continue;
                     }
 
-                    auto it = new TableIterator(new Table(result.data(), stoll(file_name)));
+                    auto size = DecodeFixed64(result.data() + 8);
+                    void *ptr = malloc(96 + 24 * size);
+
+                    auto it = new TableIterator(new(ptr) Table(result.data(), stoll(file_name)));
                     cache[dir_level].emplace(it->timestamp(), it);
                     //					cache.emplace_back();
                     delete file;
@@ -94,7 +97,9 @@ namespace LSMKV {
                         delete file;
                         continue;
                     }
-                    auto it = new TableIterator(new Table(nullptr, stoll(file_name)));
+                    auto size = DecodeFixed64(result.data() + 8);
+                    void *ptr = malloc(96 + 24 * size);
+                    auto it = new TableIterator(new(ptr) Table(nullptr, stoll(file_name)));
                     cache[dir_level].emplace(it->
 
                             timestamp(), it
@@ -294,6 +299,14 @@ namespace LSMKV {
             wait_to_merge.emplace_back(tmp);
             cache[level + 1].erase(cit.second);
         }
+
+        if (wait_to_merge.size() == 1) [[unlikely]] {
+            tmp = wait_to_merge[0].release();
+            tmp->setTimestamp(timestamp);
+            need_to_move.emplace_back(tmp->file_no());
+            cache[level + 1].emplace(timestamp, tmp);
+            return timestamp;
+        }
         // START MERGE
         Merge(file_no, level, timestamp, isDrop, wait_to_merge, need_to_write);
         return timestamp;
@@ -369,7 +382,7 @@ namespace LSMKV {
             return loser_[0];
         }
 
-        [[nodiscard]] auto top_iter(size_t& top) const{
+        [[nodiscard]] auto top_iter(size_t &top) const {
             top = loser_[0];
             return m_way_[top].get();
         }
@@ -420,124 +433,10 @@ namespace LSMKV {
         uint64_t key_timestamp = 0;
         auto n = wait_to_merge.size();
         // todo n == 1 ?????
-        if (n <= 2) [[unlikely]] {
-            for (const auto &rit: wait_to_merge) {
-                key_timestamp = rit->timestamp();
-                while (rit->hasNext()) {
-                    auto [iter, status] =
-                            merged_sst.emplace(rit->key(),
-                                               std::make_pair<uint64_t, Slice>(rit->timestamp(), rit->value()));
-                    if (!status && iter->second.first < key_timestamp) {
-                        iter->second = std::make_pair<uint64_t, Slice>(std::move(key_timestamp), rit->value());
-                    }
-                    rit->next();
-                }
-            }
-            bool isSkip = false;
-            auto t_size = merged_sst.size();
-            auto it = merged_sst.begin();
-            auto end = merged_sst.end();
-            Slice value_slice;
-            Slice tmp_slice;
-            int i{};
-            uint64_t wait_insert_key{};
-            if (t_size >= 408) [[likely]] {
-                do {
-                    table_cache = new Table(file_no++);
-                    char *tmp = table_cache->reserve(16384);
-                    for (i = 0; i < 408 && it != end; it++) {
-                        wait_insert_key = (*it).first;
-                        value_slice = (*it).second.second;
-                        if (isDrop) {
-                            auto len = DecodeFixed32(value_slice.data() + 8);
-                            isSkip = !len;
-                        }
-                        if (!isSkip) [[likely]] {
-                            ++i;
-                            // WRITE KEY AND OFFSET
-                            EncodeFixed64(tmp + key_offset, wait_insert_key);
-
-                            memcpy_tiny(tmp + key_offset + 8, value_slice.data(), value_slice.size());
-                            key_offset = key_offset + 20;
-                        }
-                    }
-
-                    if (i == 0) {
-                        // todo may bug in here
-                        // the cache may leak
-                        // need to test this
-                        delete table_cache;
-                        table_cache = nullptr;
-                        break;
-                    }
-
-                    //WRITE HEADER
-                    // WRITE TIMESTAMP
-                    EncodeFixed64(tmp, timestamp);
-                    // WIRTE PAIR SIZE
-                    EncodeFixed64(tmp + 8, i);
-                    // WRITE MIN KEY
-                    memcpy_tiny(tmp + 16, tmp + bloom_length, 8);
-                    // WRITE MAX KEY
-                    EncodeFixed64(tmp + 24, wait_insert_key);
-
-                    tmp_slice = Slice(tmp, i * 20 + bloom_length);
-                    // todo bug when use emplace_back
-                    need_to_write.emplace_back(tmp, i * 20 + bloom_length);
-                    auto iterator = new TableIterator(table_cache);
-                    table_cache->pushCache(tmp_slice.data());
-                    cache[level + 1].emplace(timestamp, iterator);
-                    key_offset = bloom_length;
-                } while (it != end);
-                table_cache = nullptr;
-                return;
-            }
-            table_cache = new Table(file_no++);
-            char *tmp = table_cache->reserve(t_size * 20 + bloom_length);
-            for (i = 0; i < 408 && it != end; it++) {
-                wait_insert_key = (*it).first;
-                value_slice = (*it).second.second;
-                if (isDrop) {
-                    auto len = DecodeFixed32(value_slice.data() + 8);
-                    isSkip = !len;
-                }
-                if (!isSkip) [[likely]] {
-                    ++i;
-                    // WRITE KEY AND OFFSET
-                    EncodeFixed64(tmp + key_offset, wait_insert_key);
-
-                    memcpy_tiny(tmp + key_offset + 8, value_slice.data(), value_slice.size());
-                    key_offset = key_offset + 20;
-                }
-            }
-            if (i == 0) {
-                // todo may bug in here
-                // the cache may leak
-                // need to test this
-                delete table_cache;
-                table_cache = nullptr;
-                return;
-            }
-
-            //WRITE HEADER
-            // WRITE TIMESTAMP
-            EncodeFixed64(tmp, timestamp);
-            // WIRTE PAIR SIZE
-            EncodeFixed64(tmp + 8, i);
-            // WRITE MIN KEY
-            memcpy_tiny(tmp + 16, tmp + bloom_length, 8);
-            // WRITE MAX KEY
-            EncodeFixed64(tmp + 24, wait_insert_key);
-
-            tmp_slice = Slice(tmp, i * 20 + bloom_length);
-            // todo bug when use emplace_back
-            need_to_write.emplace_back(tmp, i * 20 + bloom_length);
-            auto iterator = new TableIterator(table_cache);
-            table_cache->pushCache(tmp_slice.data());
-            cache[level + 1].emplace(timestamp, iterator);
-
-            table_cache = nullptr;
-        } else {
+//        if (n == 0) {
+//            int f = 5;
+//        }
+        {
             // init loser
             LoserTree *loser = LoserTree::CreateLoser(n, wait_to_merge);
             TableIterator *iter;
@@ -552,7 +451,8 @@ namespace LSMKV {
                 if (loser->end()) [[unlikely]] {
                     break;
                 }
-                table_cache = new Table(file_no++);
+
+                table_cache = new (malloc(96 + Option::pair_size_ * 24)) Table(file_no++);
                 char *tmp = table_cache->reserve(16384);
                 for (i = 0;; loser->increment()) {
 //                    index = loser->top();
@@ -641,7 +541,7 @@ namespace LSMKV {
 
     char *KeyCache::ReserveCache(size_t size, const uint64_t &file_no) {
         assert(table_cache == nullptr);
-        table_cache = new Table(file_no);
+        table_cache = new(malloc(96 + size * 24)) Table(file_no);
         return table_cache->reserve(size);
     }
 

@@ -36,12 +36,23 @@ namespace LSMKV {
             return (n != nullptr) && (n->_key < _key);
         }
 
+        int key_is_after_node(const K &_key, node *n) const {
+            if (n == nullptr) {
+                return -1;
+            }
+            return (n->_key < _key);
+        }
+
+        bool key_equal(const K &_key, node *n) const {
+            return (_key == n->_key);
+        }
+
         // return the node ahead of node
         node *findNode(const K &_key) const {
-            node *cur = _head;
+            node * cur = _head;
             byte level = getMaxHeight() - 1;
             while (true) {
-                node *next = cur->next(level);
+                node * next = cur->next(level);
                 if (KeyIsAfterNode(_key, next)) {
                     cur = next;
                 } else {
@@ -57,32 +68,50 @@ namespace LSMKV {
             }
         }
 
-        node* find_set_prev(const K &key, node **prev) {
-            node *cur = _head;
+        node *find_set_prev(const K &key, node **prev) {
+            node * cur = _head;
             byte level = getMaxHeight() - 1;
             while (true) {
-                node *next = cur->next(level);
-                if (KeyIsAfterNode(key, next)) {
-                    cur = next;
-                } else {
-                    if (equal(key, next)) {
-                        return next;
-                    }
-                    prev[level] = cur;
-                    if (level == 0) [[unlikely]] {
-                        return next;
-                    } else {
-                        level--;
-                    }
+                node * next = cur->next(level);
+                switch (key_is_after_node(key, next)) {
+                    case 0:
+                        if (key_equal(key, next)) {
+                            return next;
+                        }
+                        [[fallthrough]];
+                    case -1:
+                        prev[level] = cur;
+                        if (level == 0) [[unlikely]] {
+                            return next;
+                        } else {
+                            level--;
+                        }
+                        break;
+                    case 1:
+                        cur = next;
+                        break;
                 }
+//                if (KeyIsAfterNode(key, next)) {
+//                    cur = next;
+//                } else {
+//                    if (equal(key, next)) {
+//                        return next;
+//                    }
+//                    prev[level] = cur;
+//                    if (level == 0) [[unlikely]] {
+//                        return next;
+//                    } else {
+//                        level--;
+//                    }
+//                }
             }
         }
 
         node *findHelper(const K &key, node **prev) {
-            node *cur = _head;
+            node * cur = _head;
             byte level = getMaxHeight() - 1;
             while (true) {
-                node *next = cur->next(level);
+                node * next = cur->next(level);
                 if (KeyIsAfterNode(key, next)) {
                     cur = next;
                 } else {
@@ -121,6 +150,7 @@ namespace LSMKV {
         class Iterator {
         public:
             explicit Iterator(const Skiplist *list) : _list(list), _cur(nullptr), _end(nullptr) {};
+
             ~Iterator() = default;
 
             [[nodiscard]] bool hasNext() const {
@@ -166,6 +196,7 @@ namespace LSMKV {
                 _head->setnext(level, nullptr);
             }
         };
+
         ~Skiplist() = default;
 
         V &find(const K &key) const {
@@ -176,8 +207,8 @@ namespace LSMKV {
         }
 
         bool insert(const K &key, V &&value) {
-            node *prev[MAX_LEVEL];
-            node *n = find_set_prev(key, prev);
+            node * prev[MAX_LEVEL];
+            node * n = find_set_prev(key, prev);
 
             if (equal(key, n)) {
                 n->_value = std::move(value);

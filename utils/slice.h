@@ -29,7 +29,6 @@ namespace LSMKV {
 
     class Slice : public std::string_view {
         using std::string_view::string_view;
-
     public:
         Slice() : std::string_view() {
         }

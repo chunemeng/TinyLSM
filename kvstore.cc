@@ -238,12 +238,16 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 
     LSMKV::RandomReadableFile *files;
     char buf[1024];
-
+    std::map<uint64_t, std::string> tmp_map;
+    tmp_map.insert(tmp_list.begin(), tmp_list.end());
     LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &files);
     std::unique_ptr<LSMKV::RandomReadableFile> file(files);
     for (auto &it: map) {
         LSMKV::Slice result;
         uint32_t len = LSMKV::DecodeFixed32(it.second.data() + 8) + 15;
+        if (len == 15) {
+            continue;
+        }
         if (len <= 1024) {
             file->Read(LSMKV::DecodeFixed64(it.second.data()), len, &result, buf);
             if (crc_check && !CheckCrc(result.data(), len)) [[unlikely]] {
@@ -261,9 +265,8 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
             it.second = std::move(result.toString());
         }
     }
-
-    map.insert(tmp_list.begin(), tmp_list.end());
-    for (auto &it: map) {
+    tmp_map.merge(map);
+    for (auto &it: tmp_map) {
         if (!mem->DELETED(it.second)) {
             list.emplace_back(it);
         }
@@ -300,6 +303,10 @@ void KVStore::gc(uint64_t chunk_size) {
 
     // TODO NOT OVERFLOW
     LSMKV::Slice result, value;
+    auto size = v->head - v->tail;
+    if (chunk_size > size) {
+        chunk_size = size;
+    }
 
     int factor = chunk_size * 2 < chunk_size ? 1 : 2;
     uint64_t current_size = 0;
@@ -310,7 +317,7 @@ void KVStore::gc(uint64_t chunk_size) {
     char *ptr;
     uint64_t _chunk_size = chunk_size * factor;
     std::string value_buf;
-    std::unique_ptr<char []> tmp;
+    std::unique_ptr<char[]> tmp;
     tmp = std::make_unique<char[]>(_chunk_size);
 //    char *tmp = new char[_chunk_size];
 //    uint64_t new_offset = v->head;
@@ -318,16 +325,23 @@ void KVStore::gc(uint64_t chunk_size) {
     // I FORGET TO WRITE COMMENT!
     // NOW I DON'T KNOW HOW I DO THIS
 
+
     while (current_size < chunk_size) {
         // value_buf is the start of ceil piece of value
         if (!value_buf.empty()) {
             tmp = std::make_unique<char[]>(vlen);
             file->Read(v->tail + _chunk_size, vlen, &result, tmp.get());
+            if (result.size() < vlen) {
+                break;
+            }
 //            assert(result.size() == vlen);
         } else {
             // READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
             file->Read(v->tail, _chunk_size, &result, tmp.get());
             _chunk_size = result.size();
+            if (current_size != 0) {
+                break;
+            }
             if (_chunk_size == 0) {
                 break;
             }
@@ -374,6 +388,7 @@ void KVStore::gc(uint64_t chunk_size) {
 #endif
     assert(current_size < INT64_MAX);
     assert(v->tail < INT64_MAX);
+    file = nullptr;
     if (current_size != 0) {
         int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
         assert(st == 0);

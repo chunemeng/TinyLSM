@@ -16,7 +16,7 @@ namespace LSMKV {
     public:
         Table() {
             this->timestamp = 0;
-            sst.emplace_back(UINT64_MAX, Slice());
+            sst[0] = std::make_pair(UINT64_MAX, Slice());
         }
 
         explicit Table(const uint64_t &file_no) : file_no(file_no) {
@@ -29,26 +29,25 @@ namespace LSMKV {
         explicit Table(const char *tmp, const uint64_t &file_no) {
             timestamp = DecodeFixed64(tmp);
             this->file_no = file_no;
-            uint64_t size = DecodeFixed64(tmp + 8);
-            sst.reserve(size);
+            size_ = DecodeFixed64(tmp + 8);
+//            sst.reserve(size);
             char *buf;
             if ((isFilter = LSMKV::Option::isFilter)) {
-                buf = arena.allocate(size * 20 + bloom_size);
+                buf = arena.allocate(size_ * 20 + bloom_size);
                 bloom = Slice(buf, bloom_size);
             } else {
-                buf = arena.allocate(size * 20);
+                buf = arena.allocate(size_ * 20);
             }
 
             // NO NEED TO COPY HEADER
             // IF OPEN FILTER COPY IT
-            memcpy(buf, tmp + 32 + !isFilter * bloom_size, (isFilter ? bloom_size : 0) + size * 20);
+            memcpy(buf, tmp + 32 + !isFilter * bloom_size, (isFilter ? bloom_size : 0) + size_ * 20);
             uint64_t offset = isFilter * bloom_size;
 
             // TODO MAY NEED COMPARE!!
-            for (uint64_t i = 0; i < size * 20; i += 20) {
-                sst.emplace_back(DecodeFixed64(buf + offset + i), Slice(buf + offset + 8 + i, 12));
+            for (uint64_t i = 0; i < size_ * 20; i += 20) {
+                sst[i / 20] = std::make_pair(DecodeFixed64(buf + offset + i), Slice(buf + offset + 8 + i, 12));
             }
-
         }
 
         void pushCache(const char *tmp) {
@@ -56,13 +55,13 @@ namespace LSMKV {
                 bloom = Slice(tmp + 32, bloom_size);
             }
             timestamp = DecodeFixed64(tmp);
-            uint64_t size = DecodeFixed64(tmp + 8);
+            size_ = DecodeFixed64(tmp + 8);
             uint64_t offset = bloom_size + 32;
 
             // TODO MAY NEED COMPARE!!
-            sst.reserve(size);
-            for (uint64_t i = 0; i < size * 20; i += 20) {
-                sst.emplace_back(DecodeFixed64(tmp + offset + i), Slice(tmp + offset + 8 + i, 12));
+//            sst.reserve(size);
+            for (uint64_t i = 0; i < size_ * 20; i += 20) {
+                sst[i / 20] = std::make_pair(DecodeFixed64(tmp + offset + i), Slice(tmp + offset + 8 + i, 12));
             }
         }
 
@@ -71,7 +70,7 @@ namespace LSMKV {
         }
 
         [[nodiscard]] bool KeyMatch(const uint64_t &key) const {
-            if (key < sst[0].first || key > sst[sst.size() - 1].first) {
+            if (key < sst[0].first || key > sst[size() - 1].first) {
                 return false;
             }
             return !isFilter || KeyMayMatch(key, bloom);
@@ -92,18 +91,22 @@ namespace LSMKV {
                 return "";
             }
             uint64_t offset = BinarySearchGet(key);
-            if (offset >= sst.size()) {
+            if (offset >= size()) {
                 return "";
             } else {
                 return {sst[offset].second.data(), sst[offset].second.size()};
             }
+        }
+        
+        size_t size() const {
+            return size_;
         }
 
     private:
         [[nodiscard]] uint64_t BinarySearchGet(const uint64_t &key) const {
             // TODO 斐波那契分割优化(?)
             // NOT INCLUDE END
-            uint64_t left = 0, right = sst.size(), mid;
+            uint64_t left = 0, right = size(), mid;
             while (left < right) {
                 mid = left + ((right - left) >> 1);
                 if (sst[mid].first < key)
@@ -112,26 +115,11 @@ namespace LSMKV {
                     right = mid;
             }
             // To avoid False positive
-            if (left <= sst.size() && sst[left].first == key) {
+            if (left <= size() && sst[left].first == key) {
                 return left;
             }
 
-            return sst.size();
-            //			assert(start < end && start < sst.size() && end < sst.size());
-            //			uint64_t low = start + 1, high = end - 1, mid;
-            //			if (key == sst[start].first) {
-            //				return start;
-            //			}
-            //			while (low <= high) {
-            //				mid = low + ((high - low) >> 1);
-            //				if (key < sst[mid].first)
-            //					high = mid - 1;
-            //				else if (key > sst[mid].first)
-            //					low = mid + 1;
-            //				else
-            //					return mid;
-            //			}
-            //			return sst.size();
+            return size();
         }
 
         [[nodiscard]] uint64_t BinarySearchLocation(const uint64_t &start,
@@ -152,10 +140,12 @@ namespace LSMKV {
 
         bool isFilter = true;
         Arena arena;
-        std::vector<std::pair<uint64_t, Slice>> sst;
+//        std::vector<std::pair<uint64_t, Slice>> sst;
         Slice bloom;
         uint64_t file_no = 0;
         uint64_t timestamp = 0;
+        size_t size_;
+        std::pair<uint64_t, Slice> sst[0];
     public:
         class TableIterator {
         public:
@@ -173,7 +163,7 @@ namespace LSMKV {
             }
 
             [[nodiscard]] uint64_t size() const {
-                return _table->sst.size();
+                return _table->size();
             }
 
             [[nodiscard]] bool hasNext() const {
@@ -185,11 +175,13 @@ namespace LSMKV {
             }
 
             [[nodiscard]] uint64_t merge_key() const {
-                if (_cur < _end) [[likely]] {
-                    return _table->sst[_cur].first;
-                } else [[unlikely]] {
-                    return UINT64_MAX;
-                }
+//                if (_cur < _end) [[likely]] {
+//                    return _table->sst[_cur].first;
+//                } else [[unlikely]] {
+//                    return UINT64_MAX;
+//                }
+                bool flag = _cur < _end;
+                return !flag * UINT64_MAX + flag * _table->sst[_cur].first;
             }
 
             void merge_next() {
@@ -219,28 +211,28 @@ namespace LSMKV {
                     return;
                 }
                 _cur = _table->BinarySearchGet(key);
-                _end = _table->sst.size();
+                _end = _table->size();
             }
 
             void seek(const uint64_t &K1, const uint64_t &K2) {
                 if (!InRange(K1, K2)) {
                     _cur = _end + 1;
                 }
-                _end = _table->sst.size();
+                _end = _table->size();
                 _cur = _table->BinarySearchLocation(0, _end, K1);
                 _end = _table->BinarySearchLocation(_cur, _end, K2);
-                if (_end < _table->sst.size() && _table->sst[_end].first == K2) {
+                if (_end < _table->size() && _table->sst[_end].first == K2) {
                     _end++;
                 }
             }
 
             void seekToLast() {
-                _end = _table->sst.size();
+                _end = _table->size();
                 _cur = _end - 1;
             }
 
             [[nodiscard]] uint64_t LargestKey() const {
-                return _table->sst[_table->sst.size() - 1].first;
+                return _table->sst[_table->size() - 1].first;
             }
 
             [[nodiscard]] uint64_t SmallestKey() const {
@@ -261,7 +253,7 @@ namespace LSMKV {
 
             void seekToFirst() {
                 _cur = 0;
-                _end = _table->sst.size();
+                _end = _table->size();
             }
 
             [[nodiscard]] uint64_t timestamp() const {
