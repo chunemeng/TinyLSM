@@ -369,9 +369,9 @@ namespace LSMKV {
             return loser_[0];
         }
 
-        [[nodiscard]] auto top_iter() const{
-            auto top = loser_[0];
-            return std::make_pair(top, m_way_[top].get());
+        [[nodiscard]] auto top_iter(size_t& top) const{
+            top = loser_[0];
+            return m_way_[top].get();
         }
 
         void increment() {
@@ -558,7 +558,7 @@ namespace LSMKV {
 //                    index = loser->top();
 //                    iter = wait_to_merge[index].get();
 
-                    std::tie(index, iter) = loser->top_iter();
+                    iter = loser->top_iter(index);
 
                     if (iter->timestamp() == 0) [[unlikely]] {
                         break;

@@ -106,6 +106,9 @@ std::string KVStore::get(uint64_t key) {
         if (future_.has_value()) {
             s = std::move(imm->get(key));
             if (!s.empty()) {
+                if (mem->DELETED(s)) {
+                    return {};
+                }
                 return s;
             }
             future_->get();
@@ -233,16 +236,16 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
     std::map<uint64_t, std::string> map;
     kc->scan(key1, key2, map);
 
-    LSMKV::RandomReadableFile *file;
+    LSMKV::RandomReadableFile *files;
     char buf[1024];
 
+    LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &files);
+    std::unique_ptr<LSMKV::RandomReadableFile> file(files);
     for (auto &it: map) {
         LSMKV::Slice result;
         uint32_t len = LSMKV::DecodeFixed32(it.second.data() + 8) + 15;
         if (len <= 1024) {
-            LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
             file->Read(LSMKV::DecodeFixed64(it.second.data()), len, &result, buf);
-            delete file;
             if (crc_check && !CheckCrc(result.data(), len)) [[unlikely]] {
                 continue;
             }
@@ -250,9 +253,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
             it.second = std::move(result.toString());
         } else {
             std::unique_ptr<char[]> large_buf = std::make_unique<char[]>(len);
-            LSMKV::NewRandomReadableFile(LSMKV::VLogFileName(dbname), &file);
             file->Read(LSMKV::DecodeFixed64(it.second.data()), len, &result, large_buf.get());
-            delete file;
             if (crc_check && !CheckCrc(result.data(), len)) [[unlikely]] {
                 continue;
             }
@@ -293,8 +294,10 @@ void KVStore::gc(uint64_t chunk_size) {
         delete builder_->it_;
     }
     cache->Drop();
-    LSMKV::RandomReadableFile *file;
-    LSMKV::NewRandomReadableFile(vlog_path, &file);
+    LSMKV::RandomReadableFile *files;
+    LSMKV::NewRandomReadableFile(vlog_path, &(files));
+    std::unique_ptr<LSMKV::RandomReadableFile> file(files);
+
     // TODO NOT OVERFLOW
     LSMKV::Slice result, value;
 
@@ -307,33 +310,39 @@ void KVStore::gc(uint64_t chunk_size) {
     char *ptr;
     uint64_t _chunk_size = chunk_size * factor;
     std::string value_buf;
-    char *tmp = new char[_chunk_size];
+    std::unique_ptr<char []> tmp;
+    tmp = std::make_unique<char[]>(_chunk_size);
+//    char *tmp = new char[_chunk_size];
 //    uint64_t new_offset = v->head;
 
     // I FORGET TO WRITE COMMENT!
     // NOW I DON'T KNOW HOW I DO THIS
+
     while (current_size < chunk_size) {
         // value_buf is the start of ceil piece of value
         if (!value_buf.empty()) {
-            tmp = new char[vlen];
-            file->Read(v->tail + _chunk_size, vlen, &result, tmp);
-            assert(result.size() == vlen);
+            tmp = std::make_unique<char[]>(vlen);
+            file->Read(v->tail + _chunk_size, vlen, &result, tmp.get());
+//            assert(result.size() == vlen);
         } else {
             // READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
-            file->Read(v->tail, _chunk_size, &result, tmp);
+            file->Read(v->tail, _chunk_size, &result, tmp.get());
             _chunk_size = result.size();
+            if (_chunk_size == 0) {
+                break;
+            }
         }
         while (current_size < chunk_size) {
             if (!value_buf.empty()) {
                 // APPEND THE NEXT PART OF CEIL PIECE
-                value_buf.append(tmp, vlen);
+                value_buf.append(tmp.get(), vlen);
                 ptr = &value_buf[0];
                 len = value_buf.size() - 15;
                 assert(len == LSMKV::DecodeFixed64(ptr + 3));
                 key = LSMKV::DecodeFixed64(&value_buf[3]);
             } else {
                 // CURRENT PTR IN TMP
-                ptr = current_size + tmp;
+                ptr = current_size + tmp.get();
 
                 // TODO WHEN FACTOR == 1 , COULDN'T READ THE LEN
                 // THE LEN OF VALUE
@@ -357,8 +366,6 @@ void KVStore::gc(uint64_t chunk_size) {
             }
             current_size += len + 15;
         }
-        delete file;
-        delete[] tmp;
     }
     assert(current_size <= INT64_MAX);
     assert(v->tail <= INT64_MAX);
@@ -367,11 +374,14 @@ void KVStore::gc(uint64_t chunk_size) {
 #endif
     assert(current_size < INT64_MAX);
     assert(v->tail < INT64_MAX);
-    int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
+    if (current_size != 0) {
+        int st = utils::de_alloc_file(vlog_path, v->tail, current_size);
+        assert(st == 0);
+    }
 #ifdef time_perf
     guard_.drop();
 #endif
-    assert(st == 0);
+
     v->tail += current_size;
     if (mem->memoryUsage() != 0) {
         if (future_.has_value()) {

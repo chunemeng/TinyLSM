@@ -8,8 +8,6 @@
 class perf {
 public:
     perf() : store("./data", "./data/vlog") {
-        std::random_device rd;
-        gen = std::mt19937(rd());
     }
     void reset() {
         store.reset();
@@ -21,17 +19,17 @@ public:
     }
 
     void put(int length, int rate = 1) {
+        std::string  s(value_size,'a');
         for (int i = 0; i < length; i++) {
-            store.put(curr * rate, ss);
+            store.put(curr * rate, s);
         }
         curr += length;
     }
 
 private:
-    static constexpr int value_size = 8;
+    static constexpr int value_size = 1024;
     uint64_t curr = 0;
-    std::string ss{value_size, 's'};
-    std::mt19937 gen;
+    std::mt19937 gen{std::random_device{}()};
 
     class KVStore store;
 };

@@ -184,7 +184,7 @@ namespace LSMKV {
                 return _table->sst[_cur].second;
             }
 
-            [[nodiscard]] uint64_t merge_key() {
+            [[nodiscard]] uint64_t merge_key() const {
                 if (_cur < _end) [[likely]] {
                     return _table->sst[_cur].first;
                 } else [[unlikely]] {

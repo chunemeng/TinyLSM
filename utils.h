@@ -134,7 +134,7 @@ namespace utils {
      * @attention logic _size of a file will NOT change after being reclaimed successfully,
      * so always make sure to calculate offset seems like the file has not been reclaimed.
      */
-    static inline int de_alloc_file(const std::string &path, off_t offset, off_t len) {
+    static inline int de_alloc_file(const std::string &path, off64_t offset, off64_t len) {
         int fd = open(path.c_str(), O_RDWR, 0444);
         if (fd < 0) {
             perror("open");
@@ -146,7 +146,7 @@ namespace utils {
         // We strongly recommend you to call fallocate yourself only if you arena familiar with it!
         len += offset % PAGE_SIZE;
         offset = offset / PAGE_SIZE * PAGE_SIZE;
-        if (fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, offset, len) < 0) {
+        if (fallocate64(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, offset, len) < 0) {
             perror("fallocate");
             return -2;
         }

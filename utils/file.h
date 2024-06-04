@@ -163,7 +163,7 @@ namespace LSMKV {
             }
 
             bool status = true;
-            ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
+            ssize_t read_size = ::pread64(fd, scratch, n, (offset));
             *result = Slice(scratch, (read_size < 0) ? 0 : read_size);
             if (read_size < 0) {
                 status = false;
