@@ -21,7 +21,7 @@ namespace LSMKV {
 
         explicit Table(const uint64_t &file_no) : file_no(file_no) {
         }
-
+        ~Table() = default;
         char *reserve(size_t size) {
             return arena.allocate(size);
         }
@@ -75,8 +75,6 @@ namespace LSMKV {
             }
             return !isFilter || KeyMayMatch(key, bloom);
         }
-
-        ~Table() = default;
 
         bool operator<(const Table &rhs) const {
             return timestamp < rhs.timestamp;
@@ -158,8 +156,8 @@ namespace LSMKV {
             }
 
             ~TableIterator() {
-                auto size = _table->size();
-                operator delete (_table, 96 + size * 24);
+                _table->~Table();
+                free(_table);
                 _table = nullptr;
             }
 
