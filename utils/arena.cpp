@@ -5,7 +5,7 @@
 #include "arena.h"
 namespace LSMKV {
 	char* Arena::allocateFallBack(size_t bytes) {
-		if (bytes > BLOCK_SIZE >> 2) {
+		if (bytes > (BLOCK_SIZE >> 2)) {
 			char* result = allocateNewBlock(bytes);
 			return result;
 		}

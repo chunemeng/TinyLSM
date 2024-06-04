@@ -350,7 +350,7 @@ namespace LSMKV {
         bool WriteUnbuffered(const char *data, size_t size) {
             while (size > 0) {
                 ssize_t write_result = ::write(_fd, data, size);
-                if (write_result < 0) {
+                if (write_result < 0) [[unlikely]] {
                     if (errno == EINTR) {
                         continue;  // Retry
                     }
@@ -489,6 +489,17 @@ namespace LSMKV {
         *result = new WritableNoBufFile(filename, fd);
         return true;
     }
+
+    template<class File>
+    struct FileGuard {
+        FileGuard(File* file) {
+            file_ = file;
+        }
+        ~FileGuard() {
+            delete file_;
+        }
+        File* file_;
+    };
 }
 
 #endif //WRITABLEFILE_H

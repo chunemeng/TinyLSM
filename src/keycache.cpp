@@ -4,8 +4,9 @@
 namespace LSMKV {
 
     KeyCache::KeyCache(std::string db_path, Version *v) : db_name_(std::move(db_path)) {
+        cache.reserve(16);
         for (int i = 0; i < 8; ++i) {
-            cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
+            cache.emplace_back();
         }
         std::vector<std::string> dirs;
         std::vector<std::string> files;
@@ -19,9 +20,10 @@ namespace LSMKV {
         size_t dir_size;
         size_t file_size;
         uint64_t dir_level;
+        uint64_t cur_level = 7;
 
         //        if constexpr (LSMKV::Option::isIndex) {
-        if (true) {
+        if constexpr (true) {
             raw = std::make_unique<char[]>(16 * 1024);
             dir_size = path_name.length();
             for (auto &dir: dirs) {
@@ -34,6 +36,11 @@ namespace LSMKV {
 
                 if (v->NeedNewLevel(dir_level)) {
                     v->AddNewLevel(dir_level - v->GetTreeLevel());
+                }
+                if (dir_level > cur_level) {
+                    for (; cur_level <= dir_level; ++cur_level) {
+                        cache.emplace_back();
+                    }
                 }
 
                 for (auto &file_name: files) {
@@ -57,7 +64,6 @@ namespace LSMKV {
                 }
                 path_name.resize(dir_size);
             }
-
         } else {
             for (auto &dir: dirs) {
                 files.clear();
@@ -103,6 +109,17 @@ namespace LSMKV {
 
     }
 
+    KeyCache::~KeyCache() {
+        delete table_cache;
+
+        for (const auto &level: cache) {
+            for (const auto &it: level) {
+                delete it.second;
+            }
+        }
+        cache.clear();
+    }
+
     void KeyCache::LogLevel(uint64_t level, int i) {
 
         for (auto &t: cache[level]) {
@@ -130,8 +147,8 @@ namespace LSMKV {
 
         // key is timestamp, value is iterator
         std::multimap<uint64_t, std::multimap<uint64_t, TableIterator *>::iterator> choose_this_level;
-        // tmp value
-        auto choose_it = choose_this_level.begin();
+//         tmp value
+//        auto choose_it = choose_this_level.begin();
         std::pair<uint64_t, TableIterator *> it;
         // size of sst need to read
         TableIterator *tmp;
@@ -142,10 +159,10 @@ namespace LSMKV {
         // key is level, to fix bug in the same timestamp
         std::vector<std::unique_ptr<TableIterator>> wait_to_merge;
         // add new level
-        if (level > cache.size()) {
+        if (level > cache.size()) [[unlikely]] {
             size_t j = cache.size();
             for (size_t i = j; i <= level + 1; ++i) {
-                cache.emplace(i, std::multimap<uint64_t, TableIterator *>{});
+                cache.emplace_back();
             }
         }
         bool isDrop = cache[level + 1].empty();
@@ -160,7 +177,7 @@ namespace LSMKV {
         CmpKey cmp;
 
         // pick sst in size
-        FindCompactionNextLevel(level, [&](auto &rit) {
+        for (auto rit = cache[level].begin(); rit != cache[level].end(); ++rit) {
             it = *rit;
             if (isFull) {
                 // continue to find the smallest key sst with same timestamp
@@ -169,7 +186,7 @@ namespace LSMKV {
                         choose_this_level.emplace(timestamp, que.top());
                         que.pop();
                     }
-                    return true;
+                    break;
                 } else {
                     if (cmp(rit, que.top())) {
                         que.pop();
@@ -192,8 +209,43 @@ namespace LSMKV {
                     que.push(rit);
                 }
             }
-            return false;
-        });
+        }
+
+//        FindCompactionNextLevel(level, [&](auto &rit) {
+//            it = *rit;
+//            if (isFull) {
+//                // continue to find the smallest key sst with same timestamp
+//                if (timestamp < it.first) {
+//                    while (!que.empty()) {
+//                        choose_this_level.emplace(timestamp, que.top());
+//                        que.pop();
+//                    }
+//                    return true;
+//                } else {
+//                    if (cmp(rit, que.top())) {
+//                        que.pop();
+//                        que.push(rit);
+//                    }
+//                }
+//            } else {
+//                if (size - 1 == choose_this_level.size() + que.size()) {
+//                    isFull = true;
+//                }
+//                if (it.first == timestamp) {
+//                    que.push(rit);
+//                } else {
+//                    while (!que.empty()) {
+//                        choose_this_level.emplace(timestamp, que.top());
+//                        que.pop();
+//                    }
+//                    assert(it.first > timestamp);
+//                    timestamp = it.first;
+//                    que.push(rit);
+//                }
+//            }
+//            return false;
+//        });
+
         while (!que.empty()) {
             choose_this_level.emplace(timestamp, que.top());
             que.pop();
@@ -214,7 +266,7 @@ namespace LSMKV {
         uint64_t smallest_key = UINT64_MAX;
         uint64_t largest_key = 0;
         for (auto &cit: choose_this_level) {
-            tmp = (*(cit.second)).second;
+            tmp = ((cit.second))->second;
             smallest_key = std::min(smallest_key, tmp->SmallestKey());
             largest_key = std::max(largest_key, tmp->LargestKey());
             old_file_nos[0].emplace_back(tmp->file_no());
@@ -222,6 +274,7 @@ namespace LSMKV {
             wait_to_merge.emplace_back(tmp);
             cache[level].erase(cit.second);
         }
+
         choose_this_level.clear();
 
         // Read ALL Conflicted file In NextLevel
@@ -287,6 +340,10 @@ namespace LSMKV {
             loser_[0] = winner[1];
         }
 
+        bool end() {
+            return m_way_[top()]->timestamp() == 0;
+        }
+
         void Adjust(size_t index) {
             size_t parent = index + n_;
             Table::TableIterator *s = m_way_[index].get();
@@ -309,10 +366,12 @@ namespace LSMKV {
         }
 
         size_t top() {
-            if (loser_[0] >= n_) {
-                int gg = 8;
-            }
             return loser_[0];
+        }
+
+        [[nodiscard]] auto top_iter() const{
+            auto top = loser_[0];
+            return std::make_pair(top, m_way_[top].get());
         }
 
         void increment() {
@@ -339,6 +398,7 @@ namespace LSMKV {
         size_t loser_[0];
     };
 
+
     void KeyCache::Merge(uint64_t file_no,
                          uint64_t level,
                          uint64_t timestamp,
@@ -351,7 +411,6 @@ namespace LSMKV {
         // THE OFFSET START TO WRITE (BLOOM_SIZE AND HEADER_SIZE)
         constexpr auto bloom_length = LSMKV::Option::bloom_size_ + 32;
         uint64_t key_offset = bloom_length;
-        // todo use losertree
 
         //  // TableIterator need to move next
         //  std::vector<decltype(wait_to_merge.begin())> need_to_next;
@@ -363,7 +422,6 @@ namespace LSMKV {
         // todo n == 1 ?????
         if (n <= 2) [[unlikely]] {
             for (const auto &rit: wait_to_merge) {
-                auto old_file_no = (rit)->file_no();
                 key_timestamp = rit->timestamp();
                 while (rit->hasNext()) {
                     auto [iter, status] =
@@ -399,7 +457,7 @@ namespace LSMKV {
                             // WRITE KEY AND OFFSET
                             EncodeFixed64(tmp + key_offset, wait_insert_key);
 
-                            memcpy(tmp + key_offset + 8, value_slice.data(), value_slice.size());
+                            memcpy_tiny(tmp + key_offset + 8, value_slice.data(), value_slice.size());
                             key_offset = key_offset + 20;
                         }
                     }
@@ -419,7 +477,7 @@ namespace LSMKV {
                     // WIRTE PAIR SIZE
                     EncodeFixed64(tmp + 8, i);
                     // WRITE MIN KEY
-                    memcpy(tmp + 16, tmp + bloom_length, 8);
+                    memcpy_tiny(tmp + 16, tmp + bloom_length, 8);
                     // WRITE MAX KEY
                     EncodeFixed64(tmp + 24, wait_insert_key);
 
@@ -448,7 +506,7 @@ namespace LSMKV {
                     // WRITE KEY AND OFFSET
                     EncodeFixed64(tmp + key_offset, wait_insert_key);
 
-                    memcpy(tmp + key_offset + 8, value_slice.data(), value_slice.size());
+                    memcpy_tiny(tmp + key_offset + 8, value_slice.data(), value_slice.size());
                     key_offset = key_offset + 20;
                 }
             }
@@ -467,7 +525,7 @@ namespace LSMKV {
             // WIRTE PAIR SIZE
             EncodeFixed64(tmp + 8, i);
             // WRITE MIN KEY
-            memcpy(tmp + 16, tmp + bloom_length, 8);
+            memcpy_tiny(tmp + 16, tmp + bloom_length, 8);
             // WRITE MAX KEY
             EncodeFixed64(tmp + 24, wait_insert_key);
 
@@ -491,12 +549,17 @@ namespace LSMKV {
             Slice value_slice;
             do {
                 cur_timestamp = 0;
+                if (loser->end()) [[unlikely]] {
+                    break;
+                }
                 table_cache = new Table(file_no++);
                 char *tmp = table_cache->reserve(16384);
                 for (i = 0;; loser->increment()) {
-                    index = loser->top();
+//                    index = loser->top();
+//                    iter = wait_to_merge[index].get();
 
-                    iter = wait_to_merge[index].get();
+                    std::tie(index, iter) = loser->top_iter();
+
                     if (iter->timestamp() == 0) [[unlikely]] {
                         break;
                     }
@@ -528,23 +591,26 @@ namespace LSMKV {
                         // WRITE KEY AND OFFSET
                         EncodeFixed64(tmp + key_offset, wait_insert_key);
 
-                        memcpy(tmp + key_offset + 8, value_slice.data(), value_slice.size());
+                        memcpy_tiny(tmp + key_offset + 8, value_slice.data(), value_slice.size());
                         key_offset += 20;
                     }
                 }
 
-                if (i == 0) {
-                    delete table_cache;
-                    table_cache = nullptr;
-                    file_no--;
-                    return;
-                }
+//                if (i == 0) [[unlikely]] {
+//                    std::cout<<"heloo"<<std::endl;
+//                    delete table_cache;
+//                    table_cache = nullptr;
+//                    file_no--;
+//                    loser->m_way_.clear();
+//                    free(loser);
+//                    return;
+//                }
 
                 EncodeFixed64(tmp, timestamp);
                 // WIRTE PAIR SIZE
                 EncodeFixed64(tmp + 8, i);
                 // WRITE MIN KEY
-                memcpy(tmp + 16, tmp + bloom_length, 8);
+                memcpy_tiny(tmp + 16, tmp + bloom_length, 8);
                 // WRITE MAX KEY
                 EncodeFixed64(tmp + 24, wait_insert_key);
 
@@ -558,6 +624,7 @@ namespace LSMKV {
                 key_offset = bloom_length;
             } while (cur_timestamp);
             table_cache = nullptr;
+            loser->m_way_.clear();
             free(loser);
         }
     }
@@ -565,10 +632,10 @@ namespace LSMKV {
     void KeyCache::reset() {
         delete table_cache;
         for (auto &level: cache) {
-            for (auto &it: level.second) {
+            for (auto &it: level) {
                 delete it.second;
             }
-            level.second.clear();
+            level.clear();
         }
     }
 
@@ -581,8 +648,8 @@ namespace LSMKV {
     void KeyCache::scan(const uint64_t &K1, const uint64_t &K2, std::map<key_type, std::string> &key_map) {
         auto it = key_map.begin();
         TableIterator *table;
-        for (auto &level: cache) {
-            for (auto &table_pair: std::ranges::reverse_view(level.second)) {
+        for (const auto &level: cache) {
+            for (auto &table_pair: std::ranges::reverse_view(level)) {
                 table = table_pair.second;
                 table->seek(K1, K2);
                 while (table->hasNext()) {
@@ -600,8 +667,8 @@ namespace LSMKV {
                         std::map<uint64_t, std::pair<uint64_t, uint64_t>> &key_map) {
         auto it = key_map.begin();
         TableIterator *table;
-        for (auto &level: cache) {
-            for (auto &table_pair: level.second) {
+        for (const auto &level: cache) {
+            for (auto &table_pair: level) {
                 table = table_pair.second;
                 table->seek(K1, K2);
                 while (table->hasNext()) {
@@ -709,8 +776,8 @@ namespace LSMKV {
         }
 
         TableIterator *table;
-        for (auto &level: cache) {
-            for (auto &it: std::ranges::reverse_view(level.second)) {
+        for (const auto &level: cache) {
+            for (auto &it: std::ranges::reverse_view(level)) {
                 table = it.second;
                 table->seek(key);
                 if (table->hasNext()) {
@@ -728,7 +795,7 @@ namespace LSMKV {
     bool KeyCache::GetOffset(const uint64_t &key, uint64_t &offset) {
         TableIterator *table;
         for (auto &level: cache) {
-            for (auto &it: std::ranges::reverse_view(level.second)) {
+            for (const auto &it: std::ranges::reverse_view(level)) {
                 table = it.second;
                 table->seek(key);
                 if (table->hasNext()) {

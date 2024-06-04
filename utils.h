@@ -451,12 +451,23 @@ namespace utils {
     static inline uint64_t offset_tail(const std::string &path, uint64_t head) {
         LSMKV::SequentialFile *file;
 
+
         int fd = ::open(path.c_str(), O_RDONLY | LSMKV::kOpenBaseFlags);
 
         off64_t offset = ::lseek(fd, 0, SEEK_DATA);
 
+        if (offset <= 0) {
+            ::close(fd);
+            return 0;
+        }
 
         file = new LSMKV::SequentialFile(path, fd);
+
+
+        LSMKV::FileGuard<LSMKV::SequentialFile> guard(file);
+
+
+
 
 
         // Can get length when read
@@ -469,9 +480,9 @@ namespace utils {
         uint32_t cur_offset;
         uint64_t size;
         std::string buf;
+        // waring!! bug in here
         while ((size = head - offset)) {
             cur_offset = 0;
-
             if (buf.size() >= PAGE_SIZE) {
                 memcpy(tmp, buf.c_str(), PAGE_SIZE);
                 buf = buf.substr(PAGE_SIZE);

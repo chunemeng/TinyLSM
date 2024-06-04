@@ -57,6 +57,27 @@ namespace LSMKV {
             }
         }
 
+        node* findAndSetPrev(const K &key, node **prev) {
+            node *cur = _head;
+            byte level = getMaxHeight() - 1;
+            while (true) {
+                node *next = cur->next(level);
+                if (KeyIsAfterNode(key, next)) {
+                    cur = next;
+                } else {
+                    if (equal(key, next)) {
+                        return next;
+                    }
+                    prev[level] = cur;
+                    if (level == 0) {
+                        return next;
+                    } else {
+                        level--;
+                    }
+                }
+            }
+        }
+
         node *findHelper(const K &key, node **prev) {
             node *cur = _head;
             byte level = getMaxHeight() - 1;
@@ -156,7 +177,7 @@ namespace LSMKV {
 
         bool insert(const K &key, V &&value) {
             node *prev[MAX_LEVEL];
-            node *n = findHelper(key, prev);
+            node *n = findAndSetPrev(key, prev);
 
             if (equal(key, n)) {
                 n->_value = std::move(value);

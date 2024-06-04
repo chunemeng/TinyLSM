@@ -130,14 +130,14 @@ namespace LSMKV {
 
     bool WriteSlice(std::vector<class WriteSlice> &need_to_write, uint64_t level, Version *v) {
         auto dbname = v->DBName();
-        const char *tmp;
         auto &scheduler = v->write_scheduler_;
         std::vector<std::future<void>> tasks;
+        tasks.reserve(need_to_write.size());
         std::promise<void> promise;
         for (auto &s: need_to_write) {
             promise = {};
             tasks.emplace_back(promise.get_future());
-            scheduler.Schedule({SSTFilePath(dbname, level + 1, v->fileno++), s, std::move(promise)});
+            scheduler.Schedule({true,SSTFilePath(dbname, level + 1, v->fileno++), s, std::move(promise)});
 //            NewWritableNoBufFile(, &file);
 ////            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
 //            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;

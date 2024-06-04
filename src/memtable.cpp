@@ -173,7 +173,7 @@ namespace LSMKV {
         size += table.insert({key, std::move(val)}).second;
     }
 #else
-        void MemTable::put(key_type key, value_type &&val) {
+    void MemTable::put(key_type key, value_type &&val) {
         char *buf = arena.allocate(val.size());
         memcpy_tiny(buf, val.data(), val.size());
         size += table.insert(key, Slice(buf, val.size()));

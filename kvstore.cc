@@ -16,12 +16,12 @@ void KVStore::writeLevel0(KVStore *kvStore) {
 KVStore::KVStore(const std::string &dir, const std::string &vlog)
         : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
     p = new Performance(dir);
+    p->StartTest("TOTAL");
     future_ = std::nullopt;
     kc = new LSMKV::KeyCache(dir, v);
     cache = new LSMKV::Cache();
     mem = std::make_unique<LSMKV::MemTable>();
     builder_ = new LSMKV::Builder(dbname.c_str(), v, kc);
-    p->StartTest("TOTAL");
 }
 
 static inline bool CheckCrc(const char *data, uint32_t len) {
@@ -38,12 +38,10 @@ KVStore::~KVStore() {
     }
 
     p->EndTest("TOTAL");
-    p->StartTest("REMOVE ALL");
     delete builder_;
     delete v;
     delete cache;
     delete kc;
-    p->EndTest("REMOVE ALL");
     delete p;
 }
 

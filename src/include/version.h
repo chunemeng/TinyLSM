@@ -17,10 +17,10 @@
 #include "../../utils/bloomfilter.h"
 
 namespace LSMKV {
-
     class WriteScheduler {
     public:
         struct Request {
+            bool isWrite_;
             std::string file_name;
             WriteSlice slice;
             std::promise<void> callback_;
@@ -47,15 +47,20 @@ namespace LSMKV {
             std::optional<Request> req;
             WritableNoBufFile *file;
             while ((req = std::move(request_queue_.pop())) != std::nullopt) {
-                WriteSlice s = req->slice;
-                char *tmp = s.data();
-                memset(tmp + 32, 0, bloom_size);
-                CreateFilter(tmp + bloom_size + 32, DecodeFixed64(tmp + 8), 20, tmp + 32);
-                KeyMayMatch(0, tmp + 32);
-                NewWritableNoBufFile(req->file_name, &file);
-                file->WriteUnbuffered(tmp, s.size());
-                delete file;
-                req->callback_.set_value();
+                if (req->isWrite_) {
+                    WriteSlice s = req->slice;
+                    char *tmp = s.data();
+                    memset(tmp + 32, 0, bloom_size);
+                    CreateFilter(tmp + bloom_size + 32, DecodeFixed64(tmp + 8), 20, tmp + 32);
+                    KeyMayMatch(0, tmp + 32);
+                    NewWritableNoBufFile(req->file_name, &file);
+                    file->WriteUnbuffered(tmp, s.size());
+                    delete file;
+                    req->callback_.set_value();
+                } else {
+                    utils::rmfile(req->file_name);
+                    req->callback_.set_value();
+                }
             }
         };
 
@@ -143,12 +148,22 @@ namespace LSMKV {
 
         void ClearLevelStatus(uint64_t level, std::vector<uint64_t> old_files[2]) {
             std::string dir_name = DBDirName(filename);
+            std::vector<std::future<void>> tasks;
+            WriteSlice s(dir_name.data(), 0);
+            tasks.reserve(old_files[0].size() + old_files[1].size());
+            std::promise<void> promise;
             for (int i = 0; i < 2; ++i) {
                 for (auto &it: old_files[i]) {
                     status[level + i].erase(it);
-                    auto flag = utils::rmfile(SSTFilePath(dir_name, level + i, it));
-                    assert(!flag);
+                    promise = {};
+                    tasks.emplace_back(promise.get_future());
+                    write_scheduler_.Schedule({false, SSTFilePath(dir_name, level + i, it), s, std::move(promise)});
+//                    auto flag = utils::rmfile(SSTFilePath(dir_name, level + i, it));
+//                    assert(!flag);
                 }
+            }
+            for (auto &fu: tasks) {
+                fu.get();
             }
         }
 
