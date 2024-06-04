@@ -158,7 +158,8 @@ namespace LSMKV {
             }
 
             ~TableIterator() {
-                delete _table;
+                auto size = _table->size();
+                operator delete (_table, 96 + size * 24);
                 _table = nullptr;
             }
 
@@ -181,6 +182,9 @@ namespace LSMKV {
 //                    return UINT64_MAX;
 //                }
                 bool flag = _cur < _end;
+                if (flag && _cur >= _table->size()) {
+                    int hel = 5;
+                }
                 return !flag * UINT64_MAX + flag * _table->sst[_cur].first;
             }
 
