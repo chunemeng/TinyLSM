@@ -1,9 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <list>
-#include "utils.h"
+#include <string>
 
 class KVStoreAPI {
 public:

@@ -1,37 +1,21 @@
 #pragma once
 
-#include <utility>
-#include <thread>
-#include <mutex>
 #include <future>
+#include <mutex>
+#include <thread>
+#include <utility>
 
+#include "include/builder.h"
+#include "include/cache.h"
+#include "include/keycache.h"
+#include "include/memtable.h"
+#include "include/performance.h"
+#include "include/scheduler.hpp"
+#include "include/version.h"
 #include "kvstore_api.h"
-#include "src/include/memtable.h"
-#include "src/include/version.h"
-#include "src/include/keycache.h"
-#include "src/include/cache.h"
-#include "test/performance.h"
-#include "src/include/scheduler.hpp"
-#include "src/include/builder.h"
-
-//#define MEM_MAX_SIZE 408
 
 class KVStore : public KVStoreAPI {
-    // You can add your implementation here
 private:
-//	struct Deleter{
-//		void operator()(LSMKV::MemTable* memtable) const {
-//			if (memtable->memoryUsage() != 0) {
-//				callback();
-//			}
-//			delete memtable;
-//		}
-//		Deleter(std::function<void(void)>&& callback):callback(std::move(callback)){}
-//		std::function<void(void)> callback;
-//	};
-//    std::function<void(void)> callback= [this] {KVStore::writeLevel0(this); };
-//    Deleter deleter;
-//	std::future<void> future;
     LSMKV::Scheduler scheduler_;
     LSMKV::Version *v;
     std::string dbname;
@@ -42,7 +26,7 @@ private:
     LSMKV::Cache *cache;
     Performance *p;
     static constexpr int MEM_MAX_SIZE = LSMKV::Option::pair_size_;
-    const bool crc_check = true;
+    static constexpr bool crc_check = true;
 
 
     std::unique_ptr<LSMKV::MemTable> mem;
@@ -77,5 +61,4 @@ public:
     void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) override;
 
     void gc(uint64_t chunk_size) override;
-
 };

@@ -1,9 +1,9 @@
 //
 // Created by chunemeng on 24-5-23.
 //
-#include "benchmark/benchmark.h"
 #include "../kvstore.h"
-#include "../test/testutil.h"
+#include "../test/include/testutil.h"
+#include "benchmark/benchmark.h"
 
 class perf {
 public:

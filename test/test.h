@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <string>
 
-#include "kvstore.h"
-#include "utils.h"
+#include "../kvstore.h"
+#include "utils/utils.h"
 
 #define MB (1024 * 1024)
 

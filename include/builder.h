@@ -2,13 +2,12 @@
 #define BUILDER_H
 
 #include <string>
-#include "../../utils/filemeta.h"
+#include "utils/filemeta.h"
 #include "version.h"
 #include "keycache.h"
 
 namespace LSMKV {
     class Iterator;
-
 
     bool BuildTable(const std::string &dbname, Version *v, Iterator *iter, size_t size, KeyCache *kc);
 

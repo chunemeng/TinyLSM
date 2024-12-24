@@ -4,7 +4,7 @@
 #include <cassert>
 #include <semaphore.h>
 #include <random>
-#include <signal.h>
+#include <csignal>
 
 #include "test.h"
 

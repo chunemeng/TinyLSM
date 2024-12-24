@@ -1,6 +1,6 @@
-#include "include/builder.h"
-#include "include/version.h"
-#include "include/vlogbuilder.h"
+#include "builder.h"
+#include "version.h"
+#include "vlogbuilder.h"
 
 namespace LSMKV {
 #define CHUNK_SIZE (1024 * 1024 * 64)

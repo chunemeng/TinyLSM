@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdint>
 #include <string>
-#include <assert.h>
+#include <cassert>
 
 #include "test.h"
 

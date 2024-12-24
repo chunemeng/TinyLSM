@@ -3,9 +3,9 @@
 
 #include <string>
 #include "memtable.h"
-#include "../../utils/option.h"
-#include "../../utils/coding.h"
-#include "../../utils/bloomfilter.h"
+#include "utils/option.h"
+#include "utils/coding.h"
+#include "utils/bloomfilter.h"
 #include <map>
 #include <unordered_set>
 #include <iostream>

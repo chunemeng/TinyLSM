@@ -5,9 +5,9 @@
 #ifndef STORAGE_LEVELDB_UTIL_TESTUTIL_H_
 #define STORAGE_LEVELDB_UTIL_TESTUTIL_H_
 
-#include "gtest/gtest.h"
-#include "../utils/slice.h"
 #include "../kvstore.h"
+#include "utils/slice.h"
+#include "gtest/gtest.h"
 #include <random>
 
 namespace LSMKV {

@@ -1,7 +1,7 @@
 #ifndef SKIPLIST_H
 #define SKIPLIST_H
 
-#include "../../utils/arena.h"
+#include "utils/arena.h"
 #include <cstdint>
 #include <ctime>
 #include <random>

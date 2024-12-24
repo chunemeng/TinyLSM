@@ -1,13 +1,13 @@
 #ifndef BLOOMFILTER_H
 #define BLOOMFILTER_H
 
+#include "coding.h"
+#include "option.h"
+#include "MurmurHash3.h"
+#include "slice.h"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include "slice.h"
-#include "./coding.h"
-#include "../MurmurHash3.h"
-#include "./option.h"
 
 namespace LSMKV {
     static constexpr int bloom_size = LSMKV::Option::bloom_size_;

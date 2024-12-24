@@ -4,7 +4,7 @@
 #include <future>
 #include <optional>
 #include "queue.hpp"
-#include "./builder.h"
+#include "builder.h"
 
 namespace LSMKV {
     class Scheduler {

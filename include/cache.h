@@ -2,8 +2,8 @@
 #define LSMKV_SRC_CACHE_H
 
 #include <cstdint>
-#include "../../utils/slice.h"
-#include "../../utils/file.h"
+#include "utils/slice.h"
+#include "utils/file.h"
 
 namespace LSMKV {
     class Cache;

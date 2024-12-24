@@ -1,5 +1,5 @@
-#include "include/memtable.h"
-#include "../utils/coding.h"
+#include "memtable.h"
+#include "utils/coding.h"
 #include <iostream>
 #include <utility>
 

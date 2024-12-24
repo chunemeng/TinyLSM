@@ -1,10 +1,10 @@
 #ifndef VLOGBUILDER_H
 #define VLOGBUILDER_H
 
+#include "utils/coding.h"
+#include "utils/slice.h"
+#include "utils/utils.h"
 #include <string>
-#include "../../utils/slice.h"
-#include "../../utils.h"
-#include "../../utils/coding.h"
 
 namespace LSMKV {
     class VLogBuilder {

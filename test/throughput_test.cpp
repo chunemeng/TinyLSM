@@ -2,8 +2,8 @@
 // Created by chunemeng on 24-5-21.
 //
 
-#include "../test.h"
-#include "../src/include/thread.h"
+#include "thread.h"
+#include "test.h"
 
 class ThroughputTest : public Test {
 public:

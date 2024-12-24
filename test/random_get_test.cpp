@@ -1,5 +1,5 @@
 
-#include "../test.h"
+#include "test.h"
 
 class RandomGetTest : public Test {
 private:

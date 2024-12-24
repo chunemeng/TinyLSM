@@ -1,20 +1,20 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#include <string>
-#include <cstdint>
-#include <vector>
-#include <functional>
-#include <set>
-#include <thread>
-#include <optional>
-#include <future>
-#include "../../utils/file.h"
-#include "../../utils/coding.h"
-#include "../../utils/filename.h"
-#include "../../utils.h"
+#include "utils/bloomfilter.h"
+#include "utils/coding.h"
+#include "utils/file.h"
+#include "utils/filename.h"
+#include "utils/utils.h"
 #include "queue.hpp"
-#include "../../utils/bloomfilter.h"
+#include <cstdint>
+#include <functional>
+#include <future>
+#include <optional>
+#include <set>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace LSMKV {
     class WriteScheduler {

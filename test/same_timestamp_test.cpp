@@ -10,12 +10,12 @@ namespace LSMKV {
 
     static Slice Key(int i, char *buffer) {
         EncodeFixed32(buffer, i);
-        return Slice(buffer, sizeof(uint32_t));
+        return {buffer, sizeof(uint32_t)};
     }
 
     class SameTimeStampTest : public testing::Test {
     public:
-        SameTimeStampTest() : store("./data", "./data/vlog") { store.reset(); }
+        SameTimeStampTest() : store("/home/data", "/home/data/vlog") { store.reset(); }
 
         ~SameTimeStampTest() override {}
 
