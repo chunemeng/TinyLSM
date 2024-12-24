@@ -6,8 +6,10 @@
 #include <cstring>
 
 namespace LSMKV {
+
+// Note: memcpy is needed to avoid alignment issues
 inline uint64_t DecodeFixed64(const char *ptr) {
-    uint64_t value;
+    uint64_t value{};
     memcpy(&value, ptr, sizeof(uint64_t));
     if constexpr (std::endian::native == std::endian::big) {
 #if defined(__GNUC__) || defined(__clang__)
@@ -28,7 +30,7 @@ inline uint64_t DecodeFixed64(const char *ptr) {
 }
 
 inline uint32_t DecodeFixed32(const char *ptr) {
-    uint32_t value;
+    uint32_t value{};
     memcpy(&value, ptr, sizeof(uint32_t));
     if constexpr (std::endian::native == std::endian::big) {
 #if defined(__GNUC__) || defined(__clang__)
@@ -46,7 +48,7 @@ inline uint32_t DecodeFixed32(const char *ptr) {
 }
 
 inline uint16_t DecodeFixed16(const char *ptr) {
-    uint16_t value;
+    uint16_t value{};
     memcpy(&value, ptr, sizeof(uint16_t));
     if constexpr (std::endian::native == std::endian::big) {
 #if defined(__GNUC__) || defined(__clang__)

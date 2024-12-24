@@ -6,31 +6,24 @@
 #define STORAGE_LEVELDB_UTIL_TESTUTIL_H_
 
 #include "../kvstore.h"
-#include "utils/slice.h"
-#include "gtest/gtest.h"
 #include <random>
 
-namespace LSMKV {
-    namespace testutils {
+
+namespace LSMKV::testutils {
+
+inline void put(int length, const std::string &s, KVStore *store) {
+    for (int i = 0; i < length; i++) {
+        store->put(i, s);
+    }
+}
 
 
-        inline void put(int length, const std::string &s, KVStore *store) {
-            for (int i = 0; i < length; i++) {
-                store->put(i, s);
-            }
-        }
-
-        inline int RandomSeed() {
-            return testing::UnitTest::GetInstance()->random_seed();
-        }
+Slice RandomString(std::mt19937 *rnd, int len, std::string *dst);
 
 
-        Slice RandomString(std::mt19937 *rnd, int len, std::string *dst);
+std::string RandomKey(std::mt19937 *rnd, int len);
 
+}// namespace LSMKV::testutils
+ // namespace leveldb
 
-        std::string RandomKey(std::mt19937 *rnd, int len);
-
-    }  // namespace test
-}  // namespace leveldb
-
-#endif  // STORAGE_LEVELDB_UTIL_TESTUTIL_H_
+#endif// STORAGE_LEVELDB_UTIL_TESTUTIL_H_

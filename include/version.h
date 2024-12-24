@@ -107,6 +107,7 @@ namespace LSMKV {
         static inline void WriteToFile(const Version *v) {
             WritableNoBufFile *file;
             NewWritableNoBufFile(v->filename, &file);
+
             char buf[40];
             EncodeFixed64(buf, v->fileno);
             EncodeFixed64(buf + 8, v->timestamp);

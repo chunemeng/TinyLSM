@@ -2,12 +2,12 @@
 // Created by chunemeng on 24-5-23.
 //
 #include "../kvstore.h"
-#include "../test/include/testutil.h"
+#include "../test/testutil.h"
 #include "benchmark/benchmark.h"
 
 class perf {
 public:
-    perf() : store("/hone/data", "/hone/data/vlog") {
+    perf() : store("/home/data", "/home/data/vlog") {
     }
     void reset() {
         store.reset();

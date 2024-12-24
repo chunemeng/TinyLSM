@@ -17,5 +17,6 @@ target_link_libraries(Put LSMKV)
 set(TEST_UTIL_SOURCES testutil.cc testutil.h)
 
 add_executable(Bloom bloom_test.cc ${TEST_UTIL_SOURCES} same_timestamp_test.cpp)
+target_link_libraries(Bloom LSMKV)
 target_link_libraries(Bloom gtest gmock)
 target_link_libraries(Bloom gtest_main)

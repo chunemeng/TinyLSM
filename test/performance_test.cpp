@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
     std::cout.flush();
 
-    PerfTest test("/hone/data", "/hone/data/vlog", verbose);
+    PerfTest test("/home/data", "/home/data/vlog", verbose);
 
     test.start_test();
 

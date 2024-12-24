@@ -317,13 +317,6 @@ uint64_t KeyCache::CompactionSST(uint64_t level,
 // note: the tuple is <key,timestamp,value>
 int cmp(Table::TableIterator *lhs, Table::TableIterator *rhs) {
     return lhs->merge_key() < rhs->merge_key();
-    //		if (lhs->merge_key() != rhs->merge_key()) {
-    //			return lhs->key() > rhs->key() ? 1 : -1;
-    //		}
-    //		if (lhs->timestamp() != rhs->timestamp()) {
-    //			return lhs->timestamp() > rhs->timestamp() ? 2 : -2;
-    //		}
-    //		return 0;
 }
 
 struct LoserTree {

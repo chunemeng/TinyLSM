@@ -6,12 +6,12 @@ set(CMAKE_BUILD_TYPE Debug)
 
 
 OPTION(ENABLE_TEST "Enable test" ON)
-OPTION(ENABLE_BENCHMARK "Enable benchmark" OFF)
+OPTION(ENABLE_BENCHMARK "Enable benchmark" ON)
 OPTION(ENABLE_DEBUG "Enable debug" ON)
+# Sanitizers(enable once at a time)
 OPTION(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 OPTION(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" ON)
 OPTION(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-OPTION(ENABLE_MSAN "Enable MemorySanitizer" OFF)
 
 
 if (ENABLE_ASAN)
@@ -32,12 +32,6 @@ if (ENABLE_TSAN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
 endif ()
 
-if (ENABLE_MSAN)
-    message(STATUS "MemorySanitizer enabled")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=memory")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=memory")
-endif ()
-
 if (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif ()
@@ -53,10 +47,9 @@ else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 endif ()
 
-if (ENABLE_BECHMARK)
+if (ENABLE_BENCHMARK)
     add_subdirectory("third_party/benchmark")
-    add_executable(DBBench bench/dbbench.cpp test/testutil.cc test/include/testutil.h ${SRC_FILES})
-    target_link_libraries(DBBench bench benchmark_main)
+    add_subdirectory(bench)
 endif ()
 
 if (ENABLE_TEST)

@@ -128,10 +128,7 @@ private:
         uint64_t left = start, right = end, mid;
         while (left < right) {
             mid = left + ((right - left) >> 1);
-            if (sst[mid].first < key)
-                left = mid + 1;
-            else
-                right = mid;
+            sst[mid].first < key ? left = mid + 1 : right = mid;
         }
         return left;
     }
@@ -174,8 +171,7 @@ public:
         }
 
         [[nodiscard]] uint64_t merge_key() const {
-            bool flag = _cur < _end;
-            return !flag * UINT64_MAX + flag * _table->sst[_cur].first;
+            return _cur < _end ? _table->sst[_cur].first : UINT64_MAX;
         }
 
         void merge_next() {
