@@ -23,7 +23,7 @@ namespace utils {
      * @return ture if directory exists, false otherwise.
      */
 static inline bool dirExists(const std::string &path) {
-    struct stat st{};
+    struct stat st {};
     int ret = stat(path.c_str(), &st);
     return ret == 0 && st.st_mode & S_IFDIR;
 }
@@ -508,7 +508,8 @@ static inline uint64_t offset_tail(const std::string &path, uint64_t head) {
                     file->Read(buf_size - old_size, &result, buf.data() + old_size);
                 }
                 int i = 0;
-                char len[4];
+                uint32_t real_len{};
+                char *len = reinterpret_cast<char *>(&vlen);
 
                 for (size_t s = 11; i < view.size(); i++) {
                     len[i++] = view[s];

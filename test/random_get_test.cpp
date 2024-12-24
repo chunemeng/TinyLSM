@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
     std::cout.flush();
 
-    RandomGetTest test("./data", "./data/vlog", verbose);
+    RandomGetTest test("/hone/data", "/hone/data/vlog", verbose);
 
     test.start_test();
 

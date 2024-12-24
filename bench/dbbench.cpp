@@ -7,7 +7,7 @@
 
 class perf {
 public:
-    perf() : store("./data", "./data/vlog") {
+    perf() : store("/hone/data", "/hone/data/vlog") {
     }
     void reset() {
         store.reset();

@@ -319,13 +319,9 @@ void KVStore::gc(uint64_t chunk_size) {
     std::string value_buf;
     std::unique_ptr<char[]> tmp;
     tmp = std::make_unique<char[]>(_chunk_size);
-//    char *tmp = new char[_chunk_size];
-//    uint64_t new_offset = v->head;
 
     // I FORGET TO WRITE COMMENT!
     // NOW I DON'T KNOW HOW I DO THIS
-
-
     while (current_size < chunk_size) {
         // value_buf is the start of ceil piece of value
         if (!value_buf.empty()) {
@@ -358,7 +354,7 @@ void KVStore::gc(uint64_t chunk_size) {
                 // CURRENT PTR IN TMP
                 ptr = current_size + tmp.get();
 
-                // TODO WHEN FACTOR == 1 , COULDN'T READ THE LEN
+                // TODO: WHEN FACTOR == 1 , COULDN'T READ THE LEN
                 // THE LEN OF VALUE
                 len = LSMKV::DecodeFixed32(ptr + 11);
                 // THE KEY OF VALUE

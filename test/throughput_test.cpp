@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
     std::cout.flush();
 
-    ThroughputTest test("./data", "./data/vlog", verbose);
+    ThroughputTest test("/hone/data", "/hone/data/vlog", verbose);
 
     test.start_test();
 
