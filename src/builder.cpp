@@ -138,22 +138,6 @@ namespace LSMKV {
             promise = {};
             tasks.emplace_back(promise.get_future());
             scheduler.Schedule({true,SSTFilePath(dbname, level + 1, v->fileno++), s, std::move(promise)});
-//            NewWritableNoBufFile(, &file);
-////            CreateFilter(s.data() + 8224, DecodeFixed64(s.data() + 8), 20, const_cast<char *>(s.data()) + 32);
-//            size_t num_chunks = (s.size() + CHUNK_SIZE - 1) / CHUNK_SIZE;
-//            size_t pod = s.size() - (num_chunks - 1) * CHUNK_SIZE;
-//            tmp = s.data();
-//            for (auto index = 1; index < num_chunks; ++index) {
-//                file->WriteUnbuffered(tmp, CHUNK_SIZE);
-//                tmp += CHUNK_SIZE;
-//            }
-//            assert(pod != 0);
-//            if (pod != 0) {
-//                file->WriteUnbuffered(tmp, pod);
-//            }
-//
-////            bool f = file->WriteUnbuffered(s.data(), s.size());
-//            delete file;
         }
         for (auto &fu: tasks) {
             fu.get();
@@ -174,9 +158,17 @@ namespace LSMKV {
         // todo move may faster than rewrite(?)
         WritableNoBufFile *file;
         char buf[8];
+
+        auto level_dir = LevelDirName(dbname, level);
+
+        if (!utils::dirExists(level_dir)) [[unlikely]] {
+            utils::mkdir(level_dir);
+        }
+
+
         // Change the timestamp
         for (auto &it: new_files) {
-            NewWriteAtStartFile(SSTFilePath(dbname, level + 1, it), &file);
+            NewWriteAtStartFile(SSTFilePath(level_dir, it), &file);
             EncodeFixed64(buf, timestamp);
             file->WriteUnbuffered(Slice(buf, 8));
             delete file;

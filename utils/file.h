@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+
+#include <iostream>
 namespace LSMKV {
     constexpr const size_t kWritableFileBufferSize = 65536;
     constexpr const size_t PAGE_SIZE = 4096;
@@ -480,11 +482,15 @@ namespace LSMKV {
                                            WritableNoBufFile **result) {
         int fd = ::open(filename.c_str(),
                         O_WRONLY | O_CREAT | kOpenBaseFlags, 0644);
-        ::lseek64(fd, 0, SEEK_SET);
         if (fd < 0) {
+            std::cerr << "Error opening file: " << std::strerror(errno) << std::endl;
+
             *result = nullptr;
             return false;
         }
+
+        ::lseek64(fd, 0, SEEK_SET);
+
 
         *result = new WritableNoBufFile(filename, fd);
         return true;

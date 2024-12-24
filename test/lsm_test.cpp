@@ -1,9 +1,9 @@
 
+#include "../kvstore.h"
 #include <iostream>
-#include "kvstore.h"
 #include <thread>
 int main(int argc, char *argv[]) {
-	auto* p = new KVStore("./data", "./data/vlog");
+	auto* p = new KVStore("/home/data", "/home/data/vlog");
 	if (argc == 2 && strcmp(argv[1], "-c") == 0) {
 		p->reset();
 		delete p;

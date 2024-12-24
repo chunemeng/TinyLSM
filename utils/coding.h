@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <bit>
+#include <cstring>
 
 namespace LSMKV {
     inline void mini_memcpy(void *dst, const void *src, size_t len) {

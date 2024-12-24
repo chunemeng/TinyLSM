@@ -20,9 +20,14 @@ namespace LSMKV {
 		return dbname+"/" + "level-" + std::to_string(number);
 	}
 
+    static inline std::string SSTFilePath(const std::string& level_dir, uint64_t number) {
+        return SSTFileName(level_dir,number);
+    }
+
 	static inline std::string SSTFilePath(const std::string& dbname, uint64_t level, uint64_t number) {
 		return SSTFileName(LevelDirName(dbname,level),number);
 	}
+
 	static inline std::string DBDirName(const std::string& filename) {
 		std::string::size_type separator_pos = filename.rfind('/');
 		if (separator_pos == std::string::npos) {

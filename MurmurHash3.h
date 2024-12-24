@@ -17,7 +17,7 @@ typedef unsigned __int64 uint64_t;
 
 #else	// defined(_MSC_VER)
 
-#include <stdint.h>
+#include <cstdint>
 
 #define	FORCE_INLINE inline __attribute__((always_inline))
 

@@ -174,15 +174,7 @@ namespace LSMKV {
             }
 
             [[nodiscard]] uint64_t merge_key() const {
-//                if (_cur < _end) [[likely]] {
-//                    return _table->sst[_cur].first;
-//                } else [[unlikely]] {
-//                    return UINT64_MAX;
-//                }
                 bool flag = _cur < _end;
-                if (flag && _cur >= _table->size()) {
-                    int hel = 5;
-                }
                 return !flag * UINT64_MAX + flag * _table->sst[_cur].first;
             }
 

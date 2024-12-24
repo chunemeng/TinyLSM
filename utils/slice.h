@@ -23,7 +23,6 @@ namespace LSMKV {
     private:
         char *_data;
         size_t _size;
-
     };
 
 

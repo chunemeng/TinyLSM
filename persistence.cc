@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 
 	if (pid == 0)
 	{
-		PersistenceTest test("./data", "./data/vlog", verbose);
+		PersistenceTest test("/home/data", "/home/data/vlog", verbose);
 
 		// The child process first prepared _data for testing
 		test.prepare();
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 		printf("Killing loop after %d ms.\n", wait_time);
 		std::cout << std::endl;
 
-		PersistenceTest test("./data", "./data/vlog", verbose);
+		PersistenceTest test("/home/data", "/home/data/vlog", verbose);
 
 		// test for _data integrity
 		test.test();

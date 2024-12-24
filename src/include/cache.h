@@ -7,10 +7,6 @@
 
 namespace LSMKV {
     class Cache;
-    // Value Cache
-
-
-//	Cache* NewLRUCache(size_t capacity);
 
     class Cache {
     public:
