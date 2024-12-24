@@ -1,5 +1,6 @@
 #include "kvstore.h"
 #include "include/builder.h"
+#include "param.h"
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,7 +15,7 @@ void KVStore::writeLevel0(KVStore *kvStore) {
 }
 
 KVStore::KVStore(const std::string &dir, const std::string &vlog)
-        : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
+    : KVStoreAPI(dir, vlog), v(new LSMKV::Version(dir)), dbname(dir), vlog_path(vlog) {
     p = new Performance(dir);
     p->StartTest("TOTAL");
     future_ = std::nullopt;
@@ -22,6 +23,13 @@ KVStore::KVStore(const std::string &dir, const std::string &vlog)
     cache = new LSMKV::Cache();
     mem = std::make_unique<LSMKV::MemTable>();
     builder_ = new LSMKV::Builder(dbname.c_str(), v, kc);
+}
+
+KVStore::KVStore() : KVStore(LSMKV::kDefaultDataDir, LSMKV::kDefaultVLogDir) {
+    std::string dir = LSMKV::kDefaultDataDir;
+    std::string vlog = LSMKV::kDefaultVLogDir;
+
+    std::cout << "KVStore()" << dir << vlog << std::endl;
 }
 
 static inline bool CheckCrc(const char *data, uint32_t len) {
@@ -330,7 +338,7 @@ void KVStore::gc(uint64_t chunk_size) {
             if (result.size() < vlen) {
                 break;
             }
-//            assert(result.size() == vlen);
+            //            assert(result.size() == vlen);
         } else {
             // READ A _CHUNK_SIZE(ALWAYS TWICE THAN _CHUNK_SIZE)
             file->Read(v->tail, _chunk_size, &result, tmp.get());

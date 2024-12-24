@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(LSMKV.handout)
+project(LSMKV)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_BUILD_TYPE Debug)
@@ -10,8 +10,9 @@ OPTION(ENABLE_BENCHMARK "Enable benchmark" ON)
 OPTION(ENABLE_DEBUG "Enable debug" ON)
 # Sanitizers(enable once at a time)
 OPTION(ENABLE_ASAN "Enable AddressSanitizer" OFF)
-OPTION(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" ON)
+OPTION(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 OPTION(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+OPTION(LOCAL_DATA_DIR "Use local data directory" ON)
 
 
 if (ENABLE_ASAN)
@@ -67,9 +68,15 @@ set_target_properties(clear PROPERTIES
         ADDITIONAL_MAKE_CLEAN_FILES "${CMAKE_BINARY_DIR}/CMakeFiles"
 )
 
+
+
 include_directories("${CMAKE_SOURCE_DIR}/include")
 
 add_library(LSMKV STATIC kvstore.cc)
+
+if (LOCAL_DATA_DIR)
+    target_compile_definitions(LSMKV PRIVATE LSM_DEFAULT_DATA_DIR="${CMAKE_SOURCE_DIR}/data")
+endif ()
 
 add_subdirectory(src)
 
