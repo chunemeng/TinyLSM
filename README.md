@@ -1,34 +1,19 @@
-## Project LSM-KV: KVStore using Log-structured Merge Tree
+# SE2322 Course Project: KV Separated LSM Tree
 
+## Project Overview
 
-The handout files include two main parts:
+This project is the course project for SE2322, focusing on the implementation of a Log-Structured Merge Tree (LSM Tree)
+based key-value (KV) storage system with a focus on KV separation.
 
-- The `KVStoreAPI` class in `kvstore_api.h` that specifies the interface of KVStore.
-- Test files including correctness test (`correctness.cc`) and persistence test (`persistence.cc`).
+The goal of this project is to explore the performance of LSM Tree, particularly in terms of KV data separation and
+optimization.
 
-Explanation of each handout file:
+## Getting Started
 
-```text
-.
-├── Makefile  // Makefile if you use GNU Make
-├── README.md // This readme file
-├── correctness.cc // Correctness test, you should not modify this file
-├── _data      // Data directory used in our test
-├── kvstore.cc     // your implementation
-├── kvstore.h      // your implementation
-├── kvstore_api.h  // KVStoreAPI, you should not modify this file
-├── persistence.cc // Persistence test, you should not modify this file
-├── utils.h         // Provides some file/directory interface
-├── MurmurHash3.h  // Provides murmur3 hash function
-└── test.h         // Base class for testing, you should not modify this file
 ```
-
-
-First have a look at the `kvstore_api.h` file to check functions you need to implement. Then modify the `kvstore.cc` and `kvstore.h` files and feel free to add new class files.
-
-We will use all files with `.cc`, `.cpp`, `.cxx` suffixes to build correctness and persistence tests. Thus, you can use any IDE to finish this project as long as you ensure that all C++ source files arena submitted.
-
-For the test files, of course you could modify it to debug your programs. But remember to change it back when you arena testing.
-
-Good luck :)
-
+    mkdir build
+    cd build
+    cmake ..
+    make -j 10
+    make test
+```

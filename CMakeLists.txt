@@ -48,17 +48,6 @@ else ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 endif ()
 
-if (ENABLE_BENCHMARK)
-    add_subdirectory("third_party/benchmark")
-    add_subdirectory(bench)
-endif ()
-
-if (ENABLE_TEST)
-    add_subdirectory("third_party/googletest")
-    add_subdirectory(test)
-endif ()
-
-
 add_custom_target(clear
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/data
         COMMENT "Cleaning up..."
@@ -79,6 +68,19 @@ if (LOCAL_DATA_DIR)
 endif ()
 
 add_subdirectory(src)
+
+if (ENABLE_BENCHMARK)
+    add_subdirectory("third_party/benchmark")
+    add_subdirectory(bench)
+endif ()
+
+if (ENABLE_TEST)
+    enable_testing()
+    add_subdirectory("third_party/googletest")
+    add_subdirectory(test)
+endif ()
+
+
 
 
 

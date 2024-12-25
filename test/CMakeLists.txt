@@ -20,3 +20,6 @@ add_executable(Bloom bloom_test.cc ${TEST_UTIL_SOURCES} same_timestamp_test.cpp)
 target_link_libraries(Bloom LSMKV)
 target_link_libraries(Bloom gtest gmock)
 target_link_libraries(Bloom gtest_main)
+
+add_test(NAME Persistence COMMAND LSMKVP)
+add_test(NAME Correctness COMMAND LSMKVC)

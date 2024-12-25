@@ -3,3 +3,5 @@
 cmake-build-debug*
 data
 build
+.git
+build
